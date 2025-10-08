@@ -1,13 +1,24 @@
 (function(){
-  // Simple rule-based chatbot for the frontend only
-  const defaultReplies = [
-    { q: /hello|hi|hey/i, a: "Hi! I'm the Jaipur EV assistant. How can I help you today?" },
-    { q: /hours|open/i, a: "Most stations are listed with opening hours; many operate 24/7. Which station are you asking about?" },
-    { q: /book|booking|reserve/i, a: "You can book a slot using the Booking page. Select a station and pick a date/time." },
-    { q: /price|cost|fee/i, a: "Prices vary by station; typical rates are shown on the booking page (e.g. ₹40-₹60 per 30 mins)." },
-    { q: /nearby|near me|closest/i, a: "Use the map view to find stations near your current location (Allow location access in the browser)." },
-    { q: /help|support/i, a: "You can reach support at the Contact page, or ask me and I'll try to help." }
-  ];
+  // Enhanced rule-based chatbot for the frontend only
+  // We'll keep everything client-side and call the existing stations API when needed.
+
+  const synonyms = {
+    greeting: ['hello','hi','hey','yo'],
+    hours: ['hours','open','opening','when open','timings'],
+    book: ['book','booking','reserve','reserve a slot'],
+    price: ['price','cost','fee','charge','charges','rate','rates'],
+    nearby: ['nearby','near me','closest','closest to me','near'],
+    stations: ['stations','list stations','show stations','station list']
+  };
+
+  const defaultReplies = {
+    greeting: "Hi! I'm the Jaipur EV assistant. I can help with bookings, station info, prices and directions.",
+    hours: "Most stations show opening hours on their detail page. Tell me a station name and I can fetch it for you.",
+    book: "To book a slot open the Booking page and select a station, date and time. Which station would you like to book?",
+    price: "Prices vary by station. If you tell me a station name I can look up its rates.",
+    nearby: "I can show nearby stations — allow location access and ask 'nearby' or 'stations near me'. Would you like me to search now?",
+    support: "You can reach support through the Contact page, or tell me the issue and I'll create a suggestion (frontend only)."
+  };
 
   // Create widget DOM
   function createWidget() {
@@ -40,7 +51,8 @@
     el.className = 'msg ' + who;
     const bubble = document.createElement('span');
     bubble.className = 'bubble';
-    bubble.textContent = text;
+    // allow HTML for small UI bits like links/buttons
+    bubble.innerHTML = text;
     el.appendChild(bubble);
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
@@ -60,20 +72,30 @@
     const text = input.trim();
     if (!text) return "Please type something so I can help.";
 
-    // Quick command: list stations
-    if (/^list stations$/i.test(text) || /stations/i.test(text) && /list|show|nearby/i.test(text)){
-      const names = findStationsList();
-      if (names.length) return 'Nearby stations: ' + names.join(', ');
-      return 'I could not find station names on this page; try the Stations page or reload.';
+    // Simple intent detection using keywords + synonyms
+    const t = text.toLowerCase();
+
+    // exact commands
+    if (/^list stations$/i.test(text) || (/stations/i.test(t) && /list|show|nearby|search|find/.test(t))) {
+      return { type: 'action', action: 'list_stations' };
     }
 
-    // Match rules
-    for (const r of defaultReplies){
-      if (r.q.test(text)) return r.a;
+    // check synonyms map
+    for (const intent in synonyms){
+      for (const word of synonyms[intent]){
+        if (t.includes(word)) return { type: 'intent', intent };
+      }
     }
 
-    // Fallback
-    return "Sorry, I don't understand that yet. Try: 'booking', 'list stations', 'hours', or 'price'.";
+    // station-specific question: "is <station> open" or "hours for <station>"
+    const m = t.match(/hours for (.+)|is (.+) open|opening hours for (.+)/i);
+    if (m) {
+      const name = (m[1] || m[2] || m[3] || '').trim();
+      if (name) return { type: 'station_query', q: name, field: 'hours' };
+    }
+
+    // fallback
+    return { type: 'fallback', text: "I didn't catch that. Try asking 'list stations', 'nearby', 'hours for <station>' or 'price at <station>'." };
   }
 
   // Initialize
@@ -89,22 +111,174 @@
     const input = win.querySelector('#chatbotInput');
     const send = win.querySelector('#chatbotSend');
 
+    // simple memory/context
+    const context = { lastIntent: null, lastStationSearch: null };
+
+    function renderQuickReplies(replies){
+      const container = document.createElement('div');
+      container.style.marginTop = '6px';
+      replies.forEach(r => {
+        const btn = document.createElement('button');
+        btn.textContent = r.label;
+        btn.style.marginRight = '6px';
+        btn.style.padding = '6px 8px';
+        btn.style.borderRadius = '6px';
+        btn.onclick = () => {
+          addMessage(msgContainer, r.label, 'user');
+          handleUserInput(r.value || r.label);
+        };
+        container.appendChild(btn);
+      });
+      msgContainer.appendChild(container);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    async function searchStationsApi(q){
+      try {
+        // prefer the /search endpoint if available
+        const url = window.config && window.config.backendUrl ? window.config.backendUrl.replace(/\/api\/stations/, '/api/stations/search') : '/api/stations/search';
+        const full = url + '?name=' + encodeURIComponent(q);
+        const res = await fetch(full);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data;
+      } catch (e){
+        console.error('searchStationsApi error', e);
+        return [];
+      }
+    }
+
+    async function handleAction(action){
+      if (action === 'list_stations'){
+        // try to find stations on page first
+        const names = findStationsList();
+        if (names.length){
+          addMessage(msgContainer, 'Stations I found on this page: ' + names.slice(0,8).map(n => `<strong>${n}</strong>`).join(', '));
+          renderQuickReplies(names.slice(0,5).map(n=>({ label: `Details: ${n}`, value: `hours for ${n}`})));
+          return;
+        }
+
+        // otherwise fetch from backend
+        addMessage(msgContainer, 'Searching stations...');
+        const stations = await window.fetchStations();
+        if (!stations || stations.length === 0) return addMessage(msgContainer, 'No stations available right now.');
+        const names2 = stations.slice(0,8).map(s=>s.name || s.title || s._id || 'unnamed');
+        context.lastStationSearch = stations;
+        addMessage(msgContainer, 'Stations: ' + names2.map(n=>`<strong>${n}</strong>`).join(', '));
+        renderQuickReplies(names2.slice(0,5).map(n=>({ label: `Details: ${n}`, value: `hours for ${n}`})));
+      }
+    }
+
+    async function handleIntent(intent){
+      context.lastIntent = intent;
+      switch(intent){
+        case 'greeting':
+          addMessage(msgContainer, defaultReplies.greeting);
+          renderQuickReplies([
+            { label: 'List stations', value: 'list stations' },
+            { label: 'Find nearby', value: 'nearby' }
+          ]);
+          break;
+        case 'hours':
+          addMessage(msgContainer, defaultReplies.hours);
+          addMessage(msgContainer, 'Try: "hours for <station name>" or click a station below to fetch details.');
+          break;
+        case 'book':
+          addMessage(msgContainer, defaultReplies.book);
+          addMessage(msgContainer, `<a href="/booking.html">Open Booking page</a>`);
+          break;
+        case 'price':
+          addMessage(msgContainer, defaultReplies.price);
+          break;
+        case 'nearby':
+          addMessage(msgContainer, defaultReplies.nearby);
+          // try to use geolocation
+          if (navigator.geolocation){
+            addMessage(msgContainer, 'Requesting location...');
+            navigator.geolocation.getCurrentPosition(async (pos)=>{
+              const { latitude, longitude } = pos.coords;
+              addMessage(msgContainer, `Searching near ${latitude.toFixed(3)}, ${longitude.toFixed(3)}...`);
+              // call backend /stations?lat=&lng=&radius= if implemented
+              try {
+                const url = (window.config && window.config.backendUrl) ? window.config.backendUrl.replace(/\/api\/stations/, '/api/stations') : '/api/stations';
+                const nearbyUrl = url + `?lat=${latitude}&lng=${longitude}&radius=5000`;
+                const res = await fetch(nearbyUrl);
+                const data = await res.json();
+                if (Array.isArray(data) && data.length){
+                  const names = data.slice(0,8).map(s=>s.name || s._id);
+                  addMessage(msgContainer, 'Nearby: ' + names.map(n=>`<strong>${n}</strong>`).join(', '));
+                } else {
+                  addMessage(msgContainer, 'No nearby stations found. Try the Stations page.');
+                }
+              } catch (e){
+                addMessage(msgContainer, 'Error searching nearby stations.');
+              }
+            }, (err)=> addMessage(msgContainer, 'Unable to get location: ' + err.message));
+          } else {
+            addMessage(msgContainer, 'Geolocation is not supported by your browser.');
+          }
+          break;
+        default:
+          addMessage(msgContainer, "I can help with bookings, hours, prices, and station searches.");
+      }
+    }
+
+    async function handleStationQuery(q, field){
+      addMessage(msgContainer, `Looking up <strong>${q}</strong>...`);
+      // First try search endpoint
+      const results = await searchStationsApi(q);
+      if (results && results.length){
+        const s = results[0];
+        context.lastStationSearch = results;
+        if (field === 'hours'){
+          const hours = s.openingHours || s.hours || s.opening || 'Hours not available';
+          addMessage(msgContainer, `<strong>${s.name}</strong>: ${hours}`);
+        } else {
+          // generic display
+          const info = [];
+          if (s.name) info.push(`<strong>${s.name}</strong>`);
+          if (s.chargingSpeed) info.push(`Speed: ${s.chargingSpeed}`);
+          if (s.price) info.push(`Price: ${s.price}`);
+          if (s.openingHours) info.push(`Hours: ${s.openingHours}`);
+          addMessage(msgContainer, info.join(' • ') || 'No details available');
+          renderQuickReplies([{ label: 'Open booking for this station', value: '/booking.html' }]);
+        }
+      } else {
+        addMessage(msgContainer, 'No matching station found. Try a different name or visit the Stations page.');
+      }
+    }
+
+    async function handleUserInput(raw){
+      const res = replyTo(raw);
+      if (res == null) return;
+      if (typeof res === 'string') { addMessage(msgContainer, res); return; }
+
+      if (res.type === 'action') return handleAction(res.action);
+      if (res.type === 'intent') return handleIntent(res.intent);
+      if (res.type === 'station_query') return handleStationQuery(res.q, res.field);
+      if (res.type === 'fallback') return addMessage(msgContainer, res.text);
+    }
+
     toggle.addEventListener('click', () => {
       if (win.style.display === 'none') {
         win.style.display = 'flex';
         addMessage(msgContainer, "Hello! I can help with bookings, hours and station lists.");
+        renderQuickReplies([
+          { label: 'List stations', value: 'list stations' },
+          { label: 'Find nearby', value: 'nearby' },
+          { label: 'Booking help', value: 'book' }
+        ]);
       } else {
         win.style.display = 'none';
       }
     });
 
-    send.addEventListener('click', () => {
+    send.addEventListener('click', async () => {
       const v = input.value.trim();
       if (!v) return;
       addMessage(msgContainer, v, 'user');
-      const response = replyTo(v);
-      setTimeout(()=> addMessage(msgContainer, response, 'bot'), 300);
       input.value = '';
+      await handleUserInput(v);
     });
 
     input.addEventListener('keydown', (e) => {
