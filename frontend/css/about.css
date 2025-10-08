@@ -1,7 +1,8 @@
 /* About Page Specific Styles */
 .about-hero {
     height: 60vh;
-    background: url('../images/about-hero.jpg') center/cover no-repeat;
+    /* Background image removed (missing file): url('../images/about-hero.jpg') */
+    background-color: #005bea; /* fallback solid color */
     position: relative;
     display: flex;
     align-items: center;

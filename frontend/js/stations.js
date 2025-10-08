@@ -770,34 +770,43 @@
 
 
 //
-const elements = {
-    areaSelect: document.getElementById('areaSelect'),
-    searchBtn: document.getElementById('searchBtn'),
-    typeFilter: document.getElementById('typeFilter'),
-    statusFilter: document.getElementById('statusFilter'),
-    stationsList: document.getElementById('stationsList'),
-    stationModal: document.getElementById('stationModal'),
-    closeBtn: document.querySelector('.close-btn'),
-    reviewForm: document.getElementById('reviewForm'),
-    stars: document.querySelectorAll('.stars i'),
-    modalStationName: document.getElementById('modalStationName'),
-    modalChargingSpeed: document.getElementById('modalChargingSpeed'),
-    modalAvailableSlots: document.getElementById('modalAvailableSlots'),
-    modalOpeningHours: document.getElementById('modalOpeningHours'),
-    modalAddress: document.getElementById('modalAddress'),
-    reviewsList: document.getElementById('reviewsList'),
-    modalLastUpdated: document.getElementById('modalLastUpdated') || { textContent: '' }
-};
+let elements = {};
 
 let currentStationId = null;
 let lastGeocodeRequestTime = 0;
 const geocodeQueue = [];
 
-// Initialize the page
+function initElements() {
+    elements = {
+        areaSelect: document.getElementById('areaSelect'),
+        searchBtn: document.getElementById('searchBtn'),
+        typeFilter: document.getElementById('typeFilter'),
+        statusFilter: document.getElementById('statusFilter'),
+        stationsList: document.getElementById('stationsList'),
+        stationModal: document.getElementById('stationModal'),
+        closeBtn: document.querySelector('.close-btn'),
+        reviewForm: document.getElementById('reviewForm'),
+        stars: document.querySelectorAll('.stars i') || [],
+        modalStationName: document.getElementById('modalStationName'),
+        modalChargingSpeed: document.getElementById('modalChargingSpeed'),
+        modalAvailableSlots: document.getElementById('modalAvailableSlots'),
+        modalOpeningHours: document.getElementById('modalOpeningHours'),
+        modalAddress: document.getElementById('modalAddress'),
+        reviewsList: document.getElementById('reviewsList'),
+        modalLastUpdated: document.getElementById('modalLastUpdated') || { textContent: '' },
+        reviewName: document.getElementById('reviewName'),
+        reviewText: document.getElementById('reviewText'),
+        reviewRating: document.getElementById('reviewRating')
+    };
+
+    if (!elements.stars) elements.stars = [];
+}
+// Initialize the page after DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    initElements();
     loadAllStations();
     setupEventListeners();
-    
+
     // Add OpenStreetMap attribution
     const footer = document.querySelector('footer');
     if (footer) {
@@ -808,29 +817,32 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    elements.searchBtn.addEventListener('click', handleSearch);
-    elements.closeBtn.addEventListener('click', closeModal);
-    
-    // Star rating functionality
-    elements.stars.forEach(star => {
-        star.addEventListener('click', () => {
-            const rating = parseInt(star.getAttribute('data-rating'));
-            setStarRating(rating);
+    if (elements.searchBtn) elements.searchBtn.addEventListener('click', handleSearch);
+    if (elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+
+    // Star rating functionality (guarded)
+    if (elements.stars && elements.stars.length) {
+        elements.stars.forEach(star => {
+            if (!star) return;
+            star.addEventListener('click', () => {
+                const rating = parseInt(star.getAttribute('data-rating'));
+                setStarRating(rating);
+            });
+
+            star.addEventListener('mouseover', () => {
+                const rating = parseInt(star.getAttribute('data-rating'));
+                highlightStars(rating);
+            });
+
+            star.addEventListener('mouseout', () => {
+                const currentRating = parseInt(elements.reviewRating?.value) || 0;
+                highlightStars(currentRating);
+            });
         });
-        
-        star.addEventListener('mouseover', () => {
-            const rating = parseInt(star.getAttribute('data-rating'));
-            highlightStars(rating);
-        });
-        
-        star.addEventListener('mouseout', () => {
-            const currentRating = parseInt(elements.reviewRating.value) || 0;
-            highlightStars(currentRating);
-        });
-    });
-    
-    // Review form submission
-    elements.reviewForm.addEventListener('submit', handleReviewSubmit);
+    }
+
+    // Review form submission (guarded)
+    if (elements.reviewForm) elements.reviewForm.addEventListener('submit', handleReviewSubmit);
 }
 
 function highlightStars(rating) {
