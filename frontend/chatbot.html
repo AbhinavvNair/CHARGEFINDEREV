@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot - Jaipur EV Chargers</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/chatbot.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo">
+        <i class="fas fa-charging-station"></i>
+        <h1>Jaipur EV Chargers</h1>
+      </div>
+      <nav class="main-nav">
+        <a href="index.html"><i class="fas fa-map"></i> Map View</a>
+        <a href="stations.html"><i class="fas fa-list"></i> Station List</a>
+        <a href="booking.html"><i class="fas fa-calendar-check"></i> Booking</a>
+        <a href="contact.html"><i class="fas fa-envelope"></i> Contact</a>
+        <a href="chatbot.html" class="active"><i class="fas fa-robot"></i> Chatbot</a>
+        <a href="about.html"><i class="fas fa-info-circle"></i> About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="chatbot-section" id="chatbotSectionWrapper">
+      <div class="chatbot-grid">
+        <aside class="chatbot-info">
+          <h2>EV Assistant</h2>
+          <p>Ask the assistant about station hours, bookings, prices, nearby chargers, and more. Use the examples below to get started.</p>
+
+          <div class="chatbot-examples">
+            <h3>Try these</h3>
+            <ul class="chatbot-examples-list">
+              <li data-value="list stations">list stations</li>
+              <li data-value="nearby">nearby</li>
+              <li data-value="hours for Vaishali Nagar Charging Station">hours for Vaishali Nagar Charging Station</li>
+              <li data-value="price at Jal Mahal station">price at Jal Mahal station</li>
+              <li data-value="book Vaishali Nagar on today at 10:00">book <em>Vaishali Nagar</em> on today at 10:00</li>
+              <li data-value="charging speed at ABC Station">charging speed at ABC Station</li>
+            </ul>
+          </div>
+
+          <div class="chatbot-faq">
+            <h3>FAQ</h3>
+            <dl>
+              <dt>How to book?</dt>
+              <dd>Type "book &lt;station&gt; on &lt;date&gt; at &lt;time&gt;" or use the Booking page.</dd>
+              <dt>Why can't I see prices?</dt>
+              <dd>Some stations don't publish pricing. Provide the station name and I'll try to fetch it.</dd>
+              <dt>Is my car supported?</dt>
+              <dd>Ask "connector at &lt;station&gt;" with your car model to check common compatibility.</dd>
+            </dl>
+          </div>
+
+          <div class="chatbot-tips">
+            <h3>Tips</h3>
+            <ul>
+              <li>Use plain language — the bot recognizes common phrases like "near me" or "open now".</li>
+              <li>Click example buttons to send them quickly to the chat.</li>
+              <li>If something fails, try a station name exactly as shown on the Stations page.</li>
+            </ul>
+          </div>
+        </aside>
+
+        <div class="chatbot-area" id="chatbotSection">
+          <!-- chatbot.js will render the chat UI inside this container in embedded mode -->
+          <div class="chatbot-loading">Chat assistant loading... (if this message stays, check browser console for errors)</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Jaipur EV Chargers</h3>
+        <p>Find the nearest charging stations in Jaipur</p>
+      </div>
+      <div class="footer-section">
+        <h3>Quick Links</h3>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-of-service.html">Terms of Service</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Connect</h3>
+        <div class="social-icons">
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
+      </div>
+    </div>
+    <div class="copyright">
+      <p>&copy; 2023 Jaipur EV Chargers. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/chatbot.js"></script>
+</body>
+</html>
