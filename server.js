@@ -36,6 +36,7 @@
 // app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 const express = require("express");
 const dotenv = require("dotenv");
+const path = require("path");
 const cors = require("cors");
 const morgan = require("morgan");
 const connectDB = require("./config/db");
@@ -48,22 +49,14 @@ connectDB();
 const app = express();
 
 // Middleware
-const allowedOrigins = ["http://localhost:5500", "http://127.0.0.1:5500"];
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (allowedOrigins.includes(origin) || !origin) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-  })
-);
+app.use(cors()); // Enable CORS for all origins
 app.use(express.json());
 app.use(morgan("dev")); // Logging for debugging
 
-// Routes
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, "frontend")));
+
+// API Routes
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/stations", require("./routes/stationRoutes"));
 
