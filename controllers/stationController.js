@@ -69,11 +69,38 @@ const getStations = async (req, res) => {
   }
 };
 
-// Search charging stations (existing)
+// Search charging stations with filters
 const searchStations = async (req, res) => {
-  const { name } = req.query;
+  const { name, area, type, status, accessType } = req.query;
   try {
-    const stations = await ChargingStation.find({ name: { $regex: name, $options: "i" } });
+    const query = {};
+    
+    // Search by name
+    if (name) {
+      query.name = { $regex: name, $options: "i" };
+    }
+    
+    // Search by area (check address.area field)
+    if (area) {
+      query["address.area"] = { $regex: area, $options: "i" };
+    }
+    
+    // Search by charging speed/type
+    if (type) {
+      query.chargingSpeed = { $regex: type, $options: "i" };
+    }
+    
+    // Search by status
+    if (status) {
+      query.status = { $regex: status, $options: "i" };
+    }
+    
+    // Search by access type (Public/Private/Semi-Public)
+    if (accessType) {
+      query.accessType = { $regex: accessType, $options: "i" };
+    }
+    
+    const stations = await ChargingStation.find(query);
     res.json(stations);
   } catch (error) {
     res.status(500).json({ message: error.message });

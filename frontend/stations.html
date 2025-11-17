@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EV Stations List - Jaipur</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/stations-enhanced.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -143,15 +144,23 @@
         <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
       </div>
       <div class="filter-box">
+        <select id="accessTypeFilter">
+          <option value="">All Access Types</option>
+          <option value="Public">Public</option>
+          <option value="Private">Private</option>
+          <option value="Semi-Public">Semi-Public</option>
+        </select>
         <select id="typeFilter">
-          <option value="">All Types</option>
-          <option>Public</option>
-          <option>Private</option>
+          <option value="">All Charging Types</option>
+          <option value="Fast">Fast</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Ultra Fast">Ultra Fast</option>
         </select>
         <select id="statusFilter">
           <option value="">All Statuses</option>
-          <option>Available</option>
-          <option>Busy</option>
+          <option value="Available">Available</option>
+          <option value="Busy">Busy</option>
+          <option value="Under Maintenance">Under Maintenance</option>
         </select>
       </div>
     </div>
@@ -167,13 +176,47 @@
       <div class="modal-content">
         <span class="close-btn">&times;</span>
         <h2 id="modalStationName"></h2>
+        <span class="modal-access-badge" id="modalAccessType"></span>
+        
         <div class="station-info">
-          <p><i class="fas fa-bolt"></i> <span id="modalChargingSpeed"></span></p>
-          <p><i class="fas fa-car-battery"></i> <span id="modalAvailableSlots"></span></p>
-          <p><i class="fas fa-clock"></i> <span id="modalOpeningHours"></span></p>
-          <p><i class="fas fa-map-marker-alt"></i> <span id="modalAddress"></span></p>
-
-          <p><i class="fas fa-sync-alt"></i> <span id="modalLastUpdated"></span></p>
+          <div class="info-section">
+            <h3><i class="fas fa-info-circle"></i> Basic Info</h3>
+            <p><i class="fas fa-bolt"></i> <strong>Charging Speed:</strong> <span id="modalChargingSpeed"></span></p>
+            <p><i class="fas fa-car-battery"></i> <strong>Slots:</strong> <span id="modalAvailableSlots"></span></p>
+            <p><i class="fas fa-clock"></i> <strong>Hours:</strong> <span id="modalOpeningHours"></span></p>
+            <p><i class="fas fa-hourglass-half"></i> <strong>Wait Time:</strong> <span id="modalWaitTime"></span></p>
+            <p><i class="fas fa-fire"></i> <strong>Busiest:</strong> <span id="modalBusiestHours"></span></p>
+          </div>
+          
+          <div class="info-section">
+            <h3><i class="fas fa-map-marker-alt"></i> Location & Contact</h3>
+            <p><i class="fas fa-map-pin"></i> <strong>Address:</strong> <span id="modalAddress"></span></p>
+            <p><i class="fas fa-phone"></i> <strong>Phone:</strong> <span id="modalPhone"></span></p>
+            <p><i class="fas fa-building"></i> <strong>Operator:</strong> <span id="modalOperator"></span></p>
+          </div>
+          
+          <div class="info-section">
+            <h3><i class="fas fa-plug"></i> Connectors</h3>
+            <div id="modalConnectors"></div>
+          </div>
+          
+          <div class="info-section">
+            <h3><i class="fas fa-rupee-sign"></i> Pricing</h3>
+            <div id="modalPricing"></div>
+          </div>
+          
+          <div class="info-section">
+            <h3><i class="fas fa-concierge-bell"></i> Amenities</h3>
+            <div id="modalAmenities"></div>
+          </div>
+          
+          <div class="info-section">
+            <h3><i class="fas fa-credit-card"></i> Payment Methods</h3>
+            <div id="modalPaymentMethods"></div>
+          </div>
+          
+          <div class="info-note" id="modalSpecialInstructions"></div>
+          <p class="last-updated"><i class="fas fa-sync-alt"></i> <span id="modalLastUpdated"></span></p>
         </div>
         
         <div class="reviews-section">

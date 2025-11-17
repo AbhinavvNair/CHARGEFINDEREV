@@ -780,6 +780,7 @@ function initElements() {
     elements = {
         areaSelect: document.getElementById('areaSelect'),
         searchBtn: document.getElementById('searchBtn'),
+        accessTypeFilter: document.getElementById('accessTypeFilter'),
         typeFilter: document.getElementById('typeFilter'),
         statusFilter: document.getElementById('statusFilter'),
         stationsList: document.getElementById('stationsList'),
@@ -788,10 +789,20 @@ function initElements() {
         reviewForm: document.getElementById('reviewForm'),
         stars: document.querySelectorAll('.stars i') || [],
         modalStationName: document.getElementById('modalStationName'),
+        modalAccessType: document.getElementById('modalAccessType'),
         modalChargingSpeed: document.getElementById('modalChargingSpeed'),
         modalAvailableSlots: document.getElementById('modalAvailableSlots'),
         modalOpeningHours: document.getElementById('modalOpeningHours'),
+        modalWaitTime: document.getElementById('modalWaitTime'),
+        modalBusiestHours: document.getElementById('modalBusiestHours'),
         modalAddress: document.getElementById('modalAddress'),
+        modalPhone: document.getElementById('modalPhone'),
+        modalOperator: document.getElementById('modalOperator'),
+        modalConnectors: document.getElementById('modalConnectors'),
+        modalPricing: document.getElementById('modalPricing'),
+        modalAmenities: document.getElementById('modalAmenities'),
+        modalPaymentMethods: document.getElementById('modalPaymentMethods'),
+        modalSpecialInstructions: document.getElementById('modalSpecialInstructions'),
         reviewsList: document.getElementById('reviewsList'),
         modalLastUpdated: document.getElementById('modalLastUpdated') || { textContent: '' },
         reviewName: document.getElementById('reviewName'),
@@ -857,9 +868,10 @@ function handleSearch() {
     const area = elements.areaSelect.value;
     const type = elements.typeFilter.value;
     const status = elements.statusFilter.value;
+    const accessType = elements.accessTypeFilter?.value || '';
     
-    if (area || type || status) {
-        fetchFilteredStations(area, type, status);
+    if (area || type || status || accessType) {
+        fetchFilteredStations(area, type, status, accessType);
     } else {
         loadAllStations();
     }
@@ -884,7 +896,7 @@ async function loadAllStations() {
 }
 
 // Fetch filtered stations
-async function fetchFilteredStations(area, type, status) {
+async function fetchFilteredStations(area, type, status, accessType) {
     try {
         showLoading();
         
@@ -892,6 +904,7 @@ async function fetchFilteredStations(area, type, status) {
         if (area) params.append('area', area);
         if (type) params.append('type', type);
         if (status) params.append('status', status);
+        if (accessType) params.append('accessType', accessType);
         
         const response = await fetch(`${window.config.backendUrl}/search?${params.toString()}`);
         
@@ -916,8 +929,11 @@ function displayStations(stations) {
     
     elements.stationsList.innerHTML = stations.map(station => {
         const slots = typeof station.slots === 'number' ? station.slots : 0;
-        const address = station.address || (station.latitude && station.longitude ? 
-            "Loading address..." : "Address not available");
+        const addressStr = station.address?.street && station.address?.area 
+            ? `${station.address.area}, ${station.address.city || 'Jaipur'}`
+            : (station.latitude && station.longitude ? "Loading address..." : "Address not available");
+        const accessType = station.accessType || 'Public';
+        const pricing = station.pricing?.perUnit ? `₹${station.pricing.perUnit}/kWh` : 'See details';
         
         return `
         <div class="station-card" data-id="${station._id}" 
@@ -932,8 +948,9 @@ function displayStations(stations) {
             <div class="station-details">
                 <p><i class="fas fa-bolt"></i> ${station.chargingSpeed || 'Not specified'}</p>
                 <p><i class="fas fa-car-battery"></i> ${slots} slot${slots !== 1 ? 's' : ''} available</p>
+                <p><i class="fas fa-rupee-sign"></i> ${pricing}</p>
                 <p><i class="fas fa-clock"></i> ${station.openingHours || '24/7'}</p>
-                <p><i class="fas fa-map-marker-alt"></i> ${address}</p>
+                <p><i class="fas fa-map-marker-alt"></i> ${addressStr}</p>
             </div>
             <button class="view-details-btn">View Details</button>
         </div>
@@ -1021,35 +1038,94 @@ async function openStationModal(stationId) {
 async function populateModal(station, reviews) {
     // Station details with fallbacks
     elements.modalStationName.textContent = station.name || "Unnamed Station";
-    elements.modalChargingSpeed.textContent = station.chargingSpeed || "Not specified";
     
-    // Handle slots display
+    // Access Type Badge
+    const accessType = station.accessType || 'Public';
+    if (elements.modalAccessType) {
+        elements.modalAccessType.textContent = accessType;
+        elements.modalAccessType.className = `modal-access-badge ${accessType.toLowerCase().replace('-', '')}`;
+    }
+    
+    // Basic Info
+    elements.modalChargingSpeed.textContent = station.chargingSpeed || "Not specified";
     const slots = typeof station.slots === 'number' ? station.slots : 0;
     elements.modalAvailableSlots.textContent = `${slots} slot${slots !== 1 ? 's' : ''} available`;
-    
     elements.modalOpeningHours.textContent = station.openingHours || '24/7';
+    if (elements.modalWaitTime) elements.modalWaitTime.textContent = station.averageWaitTime || 'Not available';
+    if (elements.modalBusiestHours) elements.modalBusiestHours.textContent = station.busiestHours || 'Not available';
     
-    // Handle address - try card first, then station data
-    const card = document.querySelector(`.station-card[data-id="${station._id}"]`);
-    const cachedAddress = card?.dataset.address;
-    
-    if (cachedAddress) {
-        elements.modalAddress.textContent = cachedAddress;
-    } else if (station.address) {
-        elements.modalAddress.textContent = station.address;
-    } else if (station.latitude && station.longitude) {
-        elements.modalAddress.textContent = "Loading address...";
-        try {
-            const address = await throttledGeocode(station.latitude, station.longitude);
-            elements.modalAddress.textContent = address;
-        } catch (error) {
-            elements.modalAddress.textContent = "Address unavailable";
-        }
+    // Address - build from address object
+    if (station.address) {
+        const addr = station.address;
+        const fullAddress = [addr.street, addr.area, addr.city, addr.state, addr.pincode]
+            .filter(Boolean).join(', ');
+        elements.modalAddress.textContent = fullAddress || "Address not available";
     } else {
         elements.modalAddress.textContent = "Address not available";
     }
     
-    // Display last updated time if available
+    // Contact Info
+    if (elements.modalPhone) elements.modalPhone.textContent = station.contact?.phone || 'Not available';
+    if (elements.modalOperator) elements.modalOperator.textContent = station.contact?.operator || 'Not available';
+    
+    // Connectors
+    if (elements.modalConnectors && station.connectorTypes?.length) {
+        elements.modalConnectors.innerHTML = station.connectorTypes.map(conn => 
+            `<span class="connector-badge"><i class="fas fa-plug"></i> ${conn.type} - ${conn.count}x ${conn.powerOutput}</span>`
+        ).join('');
+    } else if (elements.modalConnectors) {
+        elements.modalConnectors.innerHTML = '<p>No connector information available</p>';
+    }
+    
+    // Pricing
+    if (elements.modalPricing && station.pricing) {
+        const p = station.pricing;
+        elements.modalPricing.innerHTML = `
+            <p><strong>Standard:</strong> ₹${p.perUnit || 'N/A'}/kWh</p>
+            <p><strong>Peak Hours:</strong> ₹${p.peakRate || 'N/A'}/kWh</p>
+            <p><strong>Off-Peak:</strong> ₹${p.offPeakRate || 'N/A'}/kWh</p>
+            ${p.bookingFee ? `<p><strong>Booking Fee:</strong> ₹${p.bookingFee}</p>` : ''}
+            ${p.idleFee ? `<p><strong>Idle Fee:</strong> ₹${p.idleFee}/min</p>` : ''}
+        `;
+    } else if (elements.modalPricing) {
+        elements.modalPricing.innerHTML = '<p>Pricing information not available</p>';
+    }
+    
+    // Amenities
+    if (elements.modalAmenities && station.amenities) {
+        const amenitiesAvailable = Object.entries(station.amenities)
+            .filter(([key, value]) => value)
+            .map(([key]) => key.replace(/([A-Z])/g, ' $1').trim());
+        
+        if (amenitiesAvailable.length > 0) {
+            elements.modalAmenities.innerHTML = amenitiesAvailable.map(amenity =>
+                `<span class="amenity-badge"><i class="fas fa-check-circle"></i> ${amenity}</span>`
+            ).join('');
+        } else {
+            elements.modalAmenities.innerHTML = '<p>No amenities listed</p>';
+        }
+    } else if (elements.modalAmenities) {
+        elements.modalAmenities.innerHTML = '<p>Amenity information not available</p>';
+    }
+    
+    // Payment Methods
+    if (elements.modalPaymentMethods && station.paymentMethods?.length) {
+        elements.modalPaymentMethods.innerHTML = station.paymentMethods.map(method =>
+            `<span class="payment-badge"><i class="fas fa-credit-card"></i> ${method}</span>`
+        ).join('');
+    } else if (elements.modalPaymentMethods) {
+        elements.modalPaymentMethods.innerHTML = '<p>Payment information not available</p>';
+    }
+    
+    // Special Instructions
+    if (elements.modalSpecialInstructions && station.specialInstructions) {
+        elements.modalSpecialInstructions.innerHTML = `<i class="fas fa-info-circle"></i> ${station.specialInstructions}`;
+        elements.modalSpecialInstructions.style.display = 'block';
+    } else if (elements.modalSpecialInstructions) {
+        elements.modalSpecialInstructions.style.display = 'none';
+    }
+    
+    // Last Updated
     if (station.lastUpdated) {
         const lastUpdated = new Date(station.lastUpdated).toLocaleString('en-IN', {
             day: '2-digit',
