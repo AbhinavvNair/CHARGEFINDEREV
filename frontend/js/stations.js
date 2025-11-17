@@ -866,12 +866,10 @@ function highlightStars(rating) {
 // Handle search button click
 function handleSearch() {
     const area = elements.areaSelect.value;
-    const type = elements.typeFilter.value;
-    const status = elements.statusFilter.value;
-    const accessType = elements.accessTypeFilter?.value || '';
+    const status = elements.statusFilter?.value || '';
     
-    if (area || type || status || accessType) {
-        fetchFilteredStations(area, type, status, accessType);
+    if (area || status) {
+        fetchFilteredStations(area, '', status, '');
     } else {
         loadAllStations();
     }
