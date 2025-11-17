@@ -31,6 +31,18 @@
     scooter: ['Type 1', 'Type 2']
   };
 
+  // Calculate distance between two coordinates using Haversine formula
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
   // Create widget DOM
   function createWidget() {
     // Toggle button
@@ -202,16 +214,44 @@
 
   // Initialize
   function init(){
-    const cssHref = 'css/chatbot.css';
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = cssHref;
-    document.head.appendChild(link);
+    // Check if we're on the dedicated chatbot page
+    const chatbotPageContainer = document.getElementById('chatbotSection');
+    const isEmbeddedMode = !!chatbotPageContainer;
 
-    const { toggle, win } = createWidget();
-    const msgContainer = win.querySelector('#chatbotMessages');
-    const input = win.querySelector('#chatbotInput');
-    const send = win.querySelector('#chatbotSend');
+    if (!isEmbeddedMode) {
+      // Widget mode - load CSS and create floating widget
+      const cssHref = 'css/chatbot.css';
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = cssHref;
+      document.head.appendChild(link);
+    }
+
+    let toggle, win, msgContainer, input, send;
+
+    if (isEmbeddedMode) {
+      // Embedded mode on chatbot.html page
+      chatbotPageContainer.innerHTML = `
+        <div class="chatbot-embedded">
+          <div class="chatbot-messages" id="chatbotMessages"></div>
+          <div class="chatbot-input">
+            <input type="text" id="chatbotInput" placeholder="Type a question..." />
+            <button id="chatbotSend"><i class="fas fa-paper-plane"></i> Send</button>
+          </div>
+        </div>
+      `;
+      msgContainer = chatbotPageContainer.querySelector('#chatbotMessages');
+      input = chatbotPageContainer.querySelector('#chatbotInput');
+      send = chatbotPageContainer.querySelector('#chatbotSend');
+    } else {
+      // Widget mode
+      const widget = createWidget();
+      toggle = widget.toggle;
+      win = widget.win;
+      msgContainer = win.querySelector('#chatbotMessages');
+      input = win.querySelector('#chatbotInput');
+      send = win.querySelector('#chatbotSend');
+    }
 
     // simple memory/context
     const context = { lastIntent: null, lastStationSearch: null };
@@ -264,13 +304,34 @@
 
     async function searchStationsApi(q){
       try {
-        // prefer the /search endpoint if available
-        const url = window.config && window.config.backendUrl ? window.config.backendUrl.replace(/\/api\/stations/, '/api/stations/search') : '/api/stations/search';
-        const full = url + '?name=' + encodeURIComponent(q);
-        const res = await fetch(full);
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data;
+        // Fetch all stations and filter client-side
+        const stations = await window.fetchStations();
+        if (!stations || !Array.isArray(stations)) return [];
+        
+        const query = q.toLowerCase().trim();
+        // Filter by name match
+        const results = stations.filter(s => {
+          const name = (s.name || s.title || '').toLowerCase();
+          const location = (s.location || '').toLowerCase();
+          const address = (s.address || '').toLowerCase();
+          
+          // Check if query matches name, location, or address
+          return name.includes(query) || 
+                 location.includes(query) || 
+                 address.includes(query) ||
+                 query.includes(name);
+        });
+        
+        // Sort by relevance (exact matches first)
+        results.sort((a, b) => {
+          const aName = (a.name || a.title || '').toLowerCase();
+          const bName = (b.name || b.title || '').toLowerCase();
+          const aExact = aName === query ? 1 : 0;
+          const bExact = bName === query ? 1 : 0;
+          return bExact - aExact;
+        });
+        
+        return results;
       } catch (e){
         console.error('searchStationsApi error', e);
         return [];
@@ -397,31 +458,57 @@
           addMessage(msgContainer, defaultReplies.price);
           break;
         case 'nearby':
-          addMessage(msgContainer, defaultReplies.nearby);
           // try to use geolocation
           if (navigator.geolocation){
-            addMessage(msgContainer, 'Requesting location...');
+            addMessage(msgContainer, 'Requesting location access...');
             navigator.geolocation.getCurrentPosition(async (pos)=>{
               const { latitude, longitude } = pos.coords;
-              addMessage(msgContainer, `Searching near ${latitude.toFixed(3)}, ${longitude.toFixed(3)}...`);
-              // call backend /stations?lat=&lng=&radius= if implemented
+              addMessage(msgContainer, `Found your location! Searching nearby stations...`);
+              
+              // Get all stations and calculate distances
               try {
-                const url = (window.config && window.config.backendUrl) ? window.config.backendUrl.replace(/\/api\/stations/, '/api/stations') : '/api/stations';
-                const nearbyUrl = url + `?lat=${latitude}&lng=${longitude}&radius=5000`;
-                const res = await fetch(nearbyUrl);
-                const data = await res.json();
-                if (Array.isArray(data) && data.length){
-                  const names = data.slice(0,8).map(s=>s.name || s._id);
-                  addMessage(msgContainer, 'Nearby: ' + names.map(n=>`<strong>${n}</strong>`).join(', '));
+                const stations = await window.fetchStations();
+                if (!stations || !stations.length) {
+                  addMessage(msgContainer, 'No stations available. Try the Stations page.');
+                  return;
+                }
+                
+                // Calculate distances and sort
+                const withDistance = stations.map(s => {
+                  const lat = s.latitude || s.lat || 0;
+                  const lng = s.longitude || s.lng || 0;
+                  const distance = calculateDistance(latitude, longitude, lat, lng);
+                  return { ...s, distance };
+                }).sort((a, b) => a.distance - b.distance);
+                
+                const nearby = withDistance.slice(0, 5);
+                if (nearby.length) {
+                  addMessage(msgContainer, '<strong>Nearby stations:</strong>');
+                  nearby.forEach(s => {
+                    const dist = s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance.toFixed(1)}km`;
+                    addMessage(msgContainer, `📍 <strong>${s.name || s.title}</strong> - ${dist} away`);
+                  });
+                  renderQuickReplies(nearby.slice(0, 3).map(s => ({
+                    label: `Details: ${s.name || s.title}`,
+                    value: `hours for ${s.name || s.title}`
+                  })));
                 } else {
-                  addMessage(msgContainer, 'No nearby stations found. Try the Stations page.');
+                  addMessage(msgContainer, 'No nearby stations found.');
                 }
               } catch (e){
-                addMessage(msgContainer, 'Error searching nearby stations.');
+                console.error('Nearby search error:', e);
+                addMessage(msgContainer, 'Error searching nearby stations. Showing all stations instead.');
+                handleAction('list_stations');
               }
-            }, (err)=> addMessage(msgContainer, 'Unable to get location: ' + err.message));
+            }, (err)=> {
+              console.error('Geolocation error:', err);
+              addMessage(msgContainer, '⚠️ Location access denied or unavailable. This feature requires HTTPS or localhost.');
+              addMessage(msgContainer, 'Showing all available stations instead:');
+              handleAction('list_stations');
+            });
           } else {
-            addMessage(msgContainer, 'Geolocation is not supported by your browser.');
+            addMessage(msgContainer, 'Geolocation is not supported by your browser. Showing all stations:');
+            handleAction('list_stations');
           }
           break;
         default:
@@ -430,37 +517,63 @@
     }
 
     async function handleStationQuery(q, field){
-      addMessage(msgContainer, `Looking up <strong>${q}</strong>...`);
+      addMessage(msgContainer, `Searching for <strong>${q}</strong>...`);
       // First try search endpoint
       const results = await searchStationsApi(q);
       if (results && results.length){
         const s = results[0];
         context.lastStationSearch = results;
+        
         if (field === 'hours'){
-          const hours = s.openingHours || s.hours || s.opening || 'Hours not available';
-          addMessage(msgContainer, `<strong>${s.name}</strong>: ${hours}`);
+          const hours = s.openingHours || s.hours || s.opening || '24/7';
+          addMessage(msgContainer, `✅ <strong>${s.name || s.title}</strong><br>📅 Hours: ${hours}`);
+          renderQuickReplies([
+            { label: `Price at ${s.name || s.title}`, value: `price at ${s.name || s.title}` },
+            { label: 'Book this station', value: `book ${s.name || s.title} on today at 10:00` }
+          ]);
           return;
         }
         if (field === 'price'){
           const price = s.price || s.rate || s.pricing || null;
-          if (price) return addMessage(msgContainer, `<strong>${s.name}</strong>: Price info - ${price}`);
-          return addMessage(msgContainer, `<strong>${s.name}</strong>: Price information not available.`);
+          if (price) {
+            addMessage(msgContainer, `✅ <strong>${s.name || s.title}</strong><br>💰 Price: ${price}`);
+          } else {
+            addMessage(msgContainer, `✅ <strong>${s.name || s.title}</strong><br>💰 Price: Contact station for pricing details`);
+          }
+          renderQuickReplies([
+            { label: `Hours for ${s.name || s.title}`, value: `hours for ${s.name || s.title}` },
+            { label: 'Book this station', value: `book ${s.name || s.title} on today at 10:00` }
+          ]);
+          return;
         }
         if (field === 'speed'){
-          const speed = s.chargingSpeed || s.speed || 'Unknown';
-          return addMessage(msgContainer, `<strong>${s.name}</strong>: Charging speed - ${speed}`);
+          const speed = s.chargingSpeed || s.speed || 'Standard';
+          addMessage(msgContainer, `✅ <strong>${s.name || s.title}</strong><br>⚡ Charging speed: ${speed}`);
+          renderQuickReplies([
+            { label: `Book ${s.name || s.title}`, value: `book ${s.name || s.title} on today at 10:00` }
+          ]);
+          return;
         }
 
         // generic display
-        const info = [];
-        if (s.name) info.push(`<strong>${s.name}</strong>`);
-        if (s.chargingSpeed) info.push(`Speed: ${s.chargingSpeed}`);
-        if (s.price) info.push(`Price: ${s.price}`);
-        if (s.openingHours) info.push(`Hours: ${s.openingHours}`);
-        addMessage(msgContainer, info.join(' • ') || 'No details available');
-        renderQuickReplies([{ label: 'Open booking for this station', value: '/booking.html' }]);
+        const info = [`✅ <strong>${s.name || s.title}</strong>`];
+        if (s.location) info.push(`📍 ${s.location}`);
+        if (s.chargingSpeed) info.push(`⚡ ${s.chargingSpeed}`);
+        if (s.openingHours) info.push(`📅 ${s.openingHours}`);
+        addMessage(msgContainer, info.join('<br>'));
+        renderQuickReplies([
+          { label: 'Book this station', value: `book ${s.name || s.title} on today at 10:00` }
+        ]);
       } else {
-        addMessage(msgContainer, 'No matching station found. Try a different name or visit the Stations page.');
+        // Get all stations to show suggestions
+        const allStations = await window.fetchStations();
+        if (allStations && allStations.length) {
+          addMessage(msgContainer, `❌ No match for "${q}". Here are available stations:`);
+          const names = allStations.slice(0, 5).map(s => s.name || s.title);
+          renderQuickReplies(names.map(n => ({ label: n, value: `hours for ${n}` })));
+        } else {
+          addMessage(msgContainer, '❌ No stations found. Visit the Stations page to browse all locations.');
+        }
       }
     }
 
@@ -582,19 +695,42 @@
       renderQuickReplies([{ label: 'Confirm booking', value: 'confirm booking' }]);
     }
 
-    toggle.addEventListener('click', () => {
-      if (win.style.display === 'none') {
-        win.style.display = 'flex';
-        addMessage(msgContainer, "Hello! I can help with bookings, hours and station lists.");
-        renderQuickReplies([
-          { label: 'List stations', value: 'list stations' },
-          { label: 'Find nearby', value: 'nearby' },
-          { label: 'Booking help', value: 'book' }
-        ]);
-      } else {
-        win.style.display = 'none';
-      }
-    });
+    // Event listeners
+    if (isEmbeddedMode) {
+      // Embedded mode - show welcome message immediately
+      addMessage(msgContainer, "Hello! I'm your EV charging assistant. I can help with bookings, hours, and station information.");
+      renderQuickReplies([
+        { label: 'List stations', value: 'list stations' },
+        { label: 'Find nearby', value: 'nearby' },
+        { label: 'Booking help', value: 'book' }
+      ]);
+
+      // Add click handlers to example buttons on the page
+      const exampleButtons = document.querySelectorAll('.chatbot-examples-list li');
+      exampleButtons.forEach(li => {
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          const val = li.getAttribute('data-value') || li.textContent.trim();
+          addMessage(msgContainer, val, 'user');
+          handleUserInput(val);
+        });
+      });
+    } else {
+      // Widget mode - toggle functionality
+      toggle.addEventListener('click', () => {
+        if (win.style.display === 'none') {
+          win.style.display = 'flex';
+          addMessage(msgContainer, "Hello! I can help with bookings, hours and station lists.");
+          renderQuickReplies([
+            { label: 'List stations', value: 'list stations' },
+            { label: 'Find nearby', value: 'nearby' },
+            { label: 'Booking help', value: 'book' }
+          ]);
+        } else {
+          win.style.display = 'none';
+        }
+      });
+    }
 
     send.addEventListener('click', async () => {
       const v = input.value.trim();
