@@ -3,51 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support | Jaipur EV Chargers</title>
+    <title>Support - Jaipur EV Chargers</title>
+    <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/support.css">
-    <link rel="stylesheet" href="css/chatbot.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <a href="index.html" class="logo">
+    <!-- Consistent Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo">
                 <i class="fas fa-charging-station"></i>
-                <span>Jaipur EV Chargers</span>
-            </a>
-            <nav>
-                <a href="index.html">Home</a>
-                <a href="evcalculator.html">Savings Calculator</a>
-                <div class="dropdown-support">
-                    <a href="#" class="support-link">Support <i class="fas fa-chevron-down"></i></a>
-                    <div class="dropdown-content">
-                        <a href="#faq-section"><i class="fas fa-question-circle"></i> FAQs</a>
-                        <a href="contact.html"><i class="fas fa-envelope"></i> Contact Us</a>
-                        <!-- <a href="#"><i class="fas fa-book"></i> User Guides</a> -->
-                    </div>
-                </div>
-                <a href="privacy-policy.html">Privacy</a>
+                <h1>Jaipur EV Chargers</h1>
+            </div>
+            <nav class="main-nav">
+                <a href="index.html"><i class="fas fa-map"></i> Map View</a>
+                <a href="stations.html"><i class="fas fa-list"></i> Station List</a>
+                <a href="booking.html"><i class="fas fa-calendar-check"></i> Booking</a>
+                <a href="contact.html"><i class="fas fa-envelope"></i> Contact</a>
+                <a href="chatbot.html"><i class="fas fa-robot"></i> Chatbot</a>
+                <a href="about.html"><i class="fas fa-info-circle"></i> About</a>
+                <a href="support.html" class="active"><i class="fas fa-headset"></i> Support</a>
             </nav>
         </div>
     </header>
 
-    <main class="support-main">
-        <div class="container">
-            <!-- <section class="hero">
-                <h1><i class="fas fa-headset"></i> How can we help you?</h1>
-                <div class="search-bar">
-                    <input type="text" placeholder="Search support articles...">
-                    <button><i class="fas fa-search"></i></button>
-                </div>
-            </section> -->
+    <!-- Hero Section -->
+    <section class="support-hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1><i class="fas fa-headset"></i> How Can We Help You?</h1>
+            <p>Find answers to common questions and get the support you need</p>
+        </div>
+    </section>
 
+    <!-- Main Content -->
+    <main class="support-main">
+        <div class="support-container">
             <section id="faq-section" class="faq-section">
-                <h2><i class="fas fa-question-circle"></i> Frequently Asked Questions</h2>
+                <h2>Frequently Asked Questions</h2>
                 
                 <div class="faq-categories">
-                    <button class="category-btn active" data-category="general">General</button>
-                    <button class="category-btn" data-category="charging">Charging</button>
-                    <button class="category-btn" data-category="savings">Savings</button>
+                    <button class="category-btn active" data-category="general"><i class="fas fa-info-circle"></i> General</button>
+                    <button class="category-btn" data-category="charging"><i class="fas fa-bolt"></i> Charging</button>
+                    <button class="category-btn" data-category="savings"><i class="fas fa-piggy-bank"></i> Savings</button>
                 </div>
 
                 <div class="faq-container">
@@ -128,26 +127,44 @@
             <section class="contact-cta">
                 <div class="cta-card">
                     <i class="fas fa-phone-alt"></i>
-                    <h3>Still need help?</h3>
-                    <p>Our EV experts are available 24/7</p>
+                    <h3>Still Need Help?</h3>
+                    <p>Our EV experts are available 24/7 to assist you</p>
                     <a href="contact.html" class="cta-button">Contact Support</a>
                 </div>
             </section>
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2023 Jaipur EV Chargers. All rights reserved.</p>
-            <div class="links">
-                <a href="privacy-policy.html">Privacy Policy</a>
-                <a href="terms-of-service.html">Terms of Service</a>
-                <a href="support.html">Support Center</a>
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Jaipur EV Chargers</h3>
+                <p>Find the nearest charging stations in Jaipur</p>
             </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="terms-of-service.html">Terms of Service</a></li>
+                    <li><a href="contact.html">Contact Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Connect</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2023 Jaipur EV Chargers. All rights reserved.</p>
         </div>
     </footer>
 
     <script src="js/support.js"></script>
-    <script src="js/chatbot.js"></script>
 </body>
 </html>

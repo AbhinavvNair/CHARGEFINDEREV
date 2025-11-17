@@ -92,15 +92,19 @@
   display: inline-block;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 8px 14px;
-  border-radius: 6px;
-  margin: 4px;
-  font-size: 0.9rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin: 6px 8px 6px 0;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
 .connector-badge i {
   margin-right: 6px;
+}
+
+#modalConnectors {
+  margin-top: 8px;
 }
 
 /* Amenity Badges */
@@ -166,31 +170,40 @@
 /* Filter Box Enhancements */
 .filter-box {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
 }
 
 .filter-box select {
   flex: 1;
-  min-width: 180px;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
+  min-width: 200px;
+  padding: 12px 18px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 10px;
   font-size: 0.95rem;
+  font-weight: 500;
   background: white;
+  color: #333;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .filter-box select:hover {
-  border-color: #4CAF50;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .filter-box select:focus {
   outline: none;
-  border-color: #1e3c72;
-  box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
 }
 
 /* Pricing Display */

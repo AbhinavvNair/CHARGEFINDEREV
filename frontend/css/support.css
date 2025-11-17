@@ -1,103 +1,55 @@
-/* Base Styles */
-:root {
-    --primary: #005bea;
-    --primary-dark: #003d9d;
-    --text: #333;
-    --text-light: #666;
-    --bg: #f9f9f9;
-    --border: #e1e1e1;
-}
+/* Support Page Specific Styles */
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-body {
-    background-color: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-}
-
-.container {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-/* Header */
-.header {
-    background-color: white;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 1rem 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    color: var(--primary);
-    font-weight: 700;
-    font-size: 1.2rem;
-}
-
-.logo i {
-    font-size: 1.5rem;
-}
-
-.header nav {
-    display: flex;
-    gap: 20px;
-}
-
-.header nav a {
-    text-decoration: none;
-    color: var(--text);
-    font-weight: 500;
-    transition: color 0.3s;
-}
-
-.header nav a:hover {
-    color: var(--primary);
-}
-
-/* Support Dropdown */
-.dropdown-support {
+/* Hero Section */
+.support-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 5rem 2rem;
+    text-align: center;
     position: relative;
-    display: inline-block;
+    overflow: hidden;
 }
 
-.support-link {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.dropdown-content {
-    display: none;
+.support-hero::before {
+    content: '';
     position: absolute;
-    background-color: white;
-    min-width: 200px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    z-index: 1;
-    top: 100%;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
     left: 0;
-    opacity: 0;
-    transform: translateY(10px);
+    width: 100%;
+    height: 100%;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.support-hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.support-hero h1 i {
+    margin-right: 15px;
+}
+
+.support-hero p {
+    font-size: 1.2rem;
+    opacity: 0.95;
+}
     transition: all 0.3s ease;
 }
 
@@ -180,55 +132,80 @@ body {
     background-color: var(--primary-dark);
 }
 
+/* Main Content */
+.support-main {
+    background: #f5f5f5;
+    min-height: calc(100vh - 300px);
+}
+
+.support-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
 /* FAQ Section */
 .faq-section {
-    margin-bottom: 3rem;
+    margin-bottom: 4rem;
 }
 
 .faq-section h2 {
-    font-size: 1.8rem;
-    margin-bottom: 1.5rem;
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: #1e3c72;
+    text-align: center;
+    font-weight: 700;
 }
 
 .faq-categories {
     display: flex;
-    gap: 10px;
-    margin-bottom: 2rem;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 3rem;
     flex-wrap: wrap;
 }
 
 .category-btn {
-    padding: 8px 16px;
-    background-color: white;
-    border: 1px solid var(--border);
-    border-radius: 20px;
+    padding: 12px 28px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 30px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .category-btn:hover {
-    background-color: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
 }
 
 .category-btn.active {
-    background-color: var(--primary);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border-color: var(--primary);
+    border-color: #667eea;
+}
+
+.category-btn i {
+    font-size: 1.1rem;
 }
 
 .faq-container {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
     overflow: hidden;
 }
 
 .faq-category {
     display: none;
+    padding: 1rem;
 }
 
 .faq-category.show {
@@ -236,7 +213,8 @@ body {
 }
 
 .faq-item {
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0.5rem;
 }
 
 .faq-item:last-child {
@@ -244,32 +222,43 @@ body {
 }
 
 .faq-question {
-    padding: 20px;
+    padding: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.faq-question:hover {
+    background: #f8f9ff;
 }
 
 .faq-question h3 {
     font-size: 1.1rem;
     font-weight: 600;
+    color: #333;
+    flex: 1;
 }
 
 .faq-question i {
-    color: var(--primary);
+    color: #667eea;
     transition: transform 0.3s;
+    font-size: 1.2rem;
 }
 
 .faq-answer {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
-    padding: 0 20px;
+    padding: 0 1.5rem;
 }
 
 .faq-answer p {
-    padding-bottom: 20px;
+    padding-bottom: 1.5rem;
+    color: #666;
+    line-height: 1.8;
     color: var(--text-light);
 }
 
@@ -284,103 +273,87 @@ body {
 /* Contact CTA */
 .contact-cta {
     text-align: center;
+    margin-top: 3rem;
 }
 
 .cta-card {
-    background-color: white;
-    border-radius: 10px;
-    padding: 30px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    max-width: 500px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 3rem 2rem;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    max-width: 600px;
     margin: 0 auto;
 }
 
 .cta-card i {
-    font-size: 2.5rem;
-    color: var(--primary);
-    margin-bottom: 15px;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.95;
 }
 
 .cta-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
 }
 
 .cta-card p {
-    color: var(--text-light);
-    margin-bottom: 20px;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    opacity: 0.9;
 }
 
 .cta-button {
     display: inline-block;
-    background-color: var(--primary);
-    color: white;
-    padding: 12px 25px;
+    background: white;
+    color: #667eea;
+    padding: 14px 35px;
     border-radius: 30px;
     text-decoration: none;
-    font-weight: 600;
-    transition: background-color 0.3s;
+    font-weight: 700;
+    font-size: 1.05rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
 .cta-button:hover {
-    background-color: var(--primary-dark);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
-/* Footer */
-.footer {
-    background-color: white;
-    padding: 2rem 0;
-    border-top: 1px solid var(--border);
-    text-align: center;
-}
-
-.footer .container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.footer .links {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-}
-
-.footer a {
-    color: var(--text-light);
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-.footer a:hover {
-    color: var(--primary);
-}
-
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
-    .header .container {
-        flex-direction: column;
-        gap: 1rem;
+    .support-hero h1 {
+        font-size: 2rem;
     }
-
-    .header nav {
-        flex-wrap: wrap;
-        justify-content: center;
+    
+    .support-hero p {
+        font-size: 1rem;
     }
-
-    .dropdown-content {
-        left: -50px;
+    
+    .faq-section h2 {
+        font-size: 1.5rem;
     }
-
-    .hero h1 {
-        font-size: 1.8rem;
+    
+    .category-btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
     }
-
-    .faq-question {
-        padding: 15px;
-    }
-
+    
     .faq-question h3 {
         font-size: 1rem;
+    }
+    
+    .cta-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .cta-card h3 {
+        font-size: 1.5rem;
+    }
+    
+    .support-container {
+        padding: 2rem 1rem;
     }
 }

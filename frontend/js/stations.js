@@ -1046,98 +1046,48 @@ async function populateModal(station, reviews) {
         elements.modalAccessType.className = `modal-access-badge ${accessType.toLowerCase().replace('-', '')}`;
     }
     
-    // Basic Info
+    // Basic Info - Only essential details
     elements.modalChargingSpeed.textContent = station.chargingSpeed || "Not specified";
     const slots = typeof station.slots === 'number' ? station.slots : 0;
     elements.modalAvailableSlots.textContent = `${slots} slot${slots !== 1 ? 's' : ''} available`;
     elements.modalOpeningHours.textContent = station.openingHours || '24/7';
-    if (elements.modalWaitTime) elements.modalWaitTime.textContent = station.averageWaitTime || 'Not available';
-    if (elements.modalBusiestHours) elements.modalBusiestHours.textContent = station.busiestHours || 'Not available';
     
-    // Address - build from address object
+    // Address - simplified
     if (station.address) {
         const addr = station.address;
-        const fullAddress = [addr.street, addr.area, addr.city, addr.state, addr.pincode]
-            .filter(Boolean).join(', ');
-        elements.modalAddress.textContent = fullAddress || "Address not available";
+        const simpleAddress = [addr.area, addr.city].filter(Boolean).join(', ');
+        elements.modalAddress.textContent = simpleAddress || "Address not available";
     } else {
         elements.modalAddress.textContent = "Address not available";
     }
     
-    // Contact Info
+    // Contact - Only phone
     if (elements.modalPhone) elements.modalPhone.textContent = station.contact?.phone || 'Not available';
-    if (elements.modalOperator) elements.modalOperator.textContent = station.contact?.operator || 'Not available';
     
-    // Connectors
+    // Connectors - display as a single line with label
     if (elements.modalConnectors && station.connectorTypes?.length) {
-        elements.modalConnectors.innerHTML = station.connectorTypes.map(conn => 
-            `<span class="connector-badge"><i class="fas fa-plug"></i> ${conn.type} - ${conn.count}x ${conn.powerOutput}</span>`
-        ).join('');
+        const connectorText = station.connectorTypes.map(conn => 
+            `${conn.type} (${conn.powerOutput})`
+        ).join(', ');
+        elements.modalConnectors.innerHTML = `<p><i class="fas fa-plug"></i> <strong>Charger Type:</strong> ${connectorText}</p>`;
     } else if (elements.modalConnectors) {
-        elements.modalConnectors.innerHTML = '<p>No connector information available</p>';
+        elements.modalConnectors.innerHTML = '<p><i class="fas fa-plug"></i> <strong>Charger Type:</strong> Not available</p>';
     }
     
-    // Pricing
+    // Pricing - display as a single line with label
     if (elements.modalPricing && station.pricing) {
-        const p = station.pricing;
-        elements.modalPricing.innerHTML = `
-            <p><strong>Standard:</strong> ₹${p.perUnit || 'N/A'}/kWh</p>
-            <p><strong>Peak Hours:</strong> ₹${p.peakRate || 'N/A'}/kWh</p>
-            <p><strong>Off-Peak:</strong> ₹${p.offPeakRate || 'N/A'}/kWh</p>
-            ${p.bookingFee ? `<p><strong>Booking Fee:</strong> ₹${p.bookingFee}</p>` : ''}
-            ${p.idleFee ? `<p><strong>Idle Fee:</strong> ₹${p.idleFee}/min</p>` : ''}
-        `;
+        elements.modalPricing.innerHTML = `<p><i class="fas fa-rupee-sign"></i> <strong>Rate:</strong> ₹${station.pricing.perUnit || 'N/A'}/kWh</p>`;
     } else if (elements.modalPricing) {
-        elements.modalPricing.innerHTML = '<p>Pricing information not available</p>';
+        elements.modalPricing.innerHTML = '<p><i class="fas fa-rupee-sign"></i> <strong>Rate:</strong> Not available</p>';
     }
     
-    // Amenities
-    if (elements.modalAmenities && station.amenities) {
-        const amenitiesAvailable = Object.entries(station.amenities)
-            .filter(([key, value]) => value)
-            .map(([key]) => key.replace(/([A-Z])/g, ' $1').trim());
-        
-        if (amenitiesAvailable.length > 0) {
-            elements.modalAmenities.innerHTML = amenitiesAvailable.map(amenity =>
-                `<span class="amenity-badge"><i class="fas fa-check-circle"></i> ${amenity}</span>`
-            ).join('');
-        } else {
-            elements.modalAmenities.innerHTML = '<p>No amenities listed</p>';
-        }
-    } else if (elements.modalAmenities) {
-        elements.modalAmenities.innerHTML = '<p>Amenity information not available</p>';
-    }
-    
-    // Payment Methods
-    if (elements.modalPaymentMethods && station.paymentMethods?.length) {
-        elements.modalPaymentMethods.innerHTML = station.paymentMethods.map(method =>
-            `<span class="payment-badge"><i class="fas fa-credit-card"></i> ${method}</span>`
-        ).join('');
-    } else if (elements.modalPaymentMethods) {
-        elements.modalPaymentMethods.innerHTML = '<p>Payment information not available</p>';
-    }
-    
-    // Special Instructions
-    if (elements.modalSpecialInstructions && station.specialInstructions) {
-        elements.modalSpecialInstructions.innerHTML = `<i class="fas fa-info-circle"></i> ${station.specialInstructions}`;
-        elements.modalSpecialInstructions.style.display = 'block';
-    } else if (elements.modalSpecialInstructions) {
-        elements.modalSpecialInstructions.style.display = 'none';
-    }
-    
-    // Last Updated
-    if (station.lastUpdated) {
-        const lastUpdated = new Date(station.lastUpdated).toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        elements.modalLastUpdated.textContent = `Last updated: ${lastUpdated}`;
-    } else {
-        elements.modalLastUpdated.textContent = '';
-    }
+    // Hide unnecessary sections
+    if (elements.modalWaitTime && elements.modalWaitTime.parentElement) elements.modalWaitTime.parentElement.style.display = 'none';
+    if (elements.modalBusiestHours && elements.modalBusiestHours.parentElement) elements.modalBusiestHours.parentElement.style.display = 'none';
+    if (elements.modalOperator && elements.modalOperator.parentElement) elements.modalOperator.parentElement.style.display = 'none';
+    if (elements.modalAmenities && elements.modalAmenities.parentElement) elements.modalAmenities.parentElement.style.display = 'none';
+    if (elements.modalPaymentMethods && elements.modalPaymentMethods.parentElement) elements.modalPaymentMethods.parentElement.style.display = 'none';
+    if (elements.modalSpecialInstructions) elements.modalSpecialInstructions.style.display = 'none';
     
     // Reviews
     displayReviews(reviews);
@@ -1389,8 +1339,10 @@ function showError(message) {
 
 function closeModal() {
     elements.stationModal.style.display = 'none';
-    elements.reviewForm.reset();
-    setStarRating(0);
+    if (elements.reviewForm) {
+        elements.reviewForm.reset();
+        setStarRating(0);
+    }
 }
 
 // Close modal when clicking outside
