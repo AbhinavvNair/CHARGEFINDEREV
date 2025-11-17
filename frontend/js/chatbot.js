@@ -790,6 +790,9 @@
         if (time) {
           setTimeout(() => {
             const timeSlots = document.querySelectorAll('.time-slot');
+            console.log('Available time slots:', Array.from(timeSlots).map(s => s.dataset.time));
+            console.log('Looking for time:', time);
+            
             const matchingSlot = Array.from(timeSlots).find(slot => 
               slot.dataset.time === time || slot.textContent.trim() === time
             );
@@ -797,15 +800,36 @@
             if (matchingSlot && !matchingSlot.classList.contains('booked')) {
               matchingSlot.click();
               addMessage(msgContainer, `✅ Time slot selected: ${time}`);
-            } else if (matchingSlot) {
-              addMessage(msgContainer, `⚠️ Time slot ${time} is already booked. Please select another.`);
+              addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+            } else if (matchingSlot && matchingSlot.classList.contains('booked')) {
+              // Find the first available slot as alternative
+              const availableSlot = Array.from(timeSlots).find(slot => 
+                !slot.classList.contains('booked')
+              );
+              if (availableSlot) {
+                availableSlot.click();
+                addMessage(msgContainer, `⚠️ Time slot ${time} was booked. Selected ${availableSlot.dataset.time} instead.`);
+                addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+              } else {
+                addMessage(msgContainer, `⚠️ Time slot ${time} is already booked and no slots available. Please select a time manually.`);
+              }
             } else {
-              addMessage(msgContainer, `⚠️ Time slot ${time} not found. Please select manually.`);
+              // Slot not found, try to find first available
+              const availableSlot = Array.from(timeSlots).find(slot => 
+                !slot.classList.contains('booked')
+              );
+              if (availableSlot) {
+                availableSlot.click();
+                addMessage(msgContainer, `⚠️ Time slot ${time} not found. Selected ${availableSlot.dataset.time} instead.`);
+                addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+              } else {
+                addMessage(msgContainer, `⚠️ Time slot ${time} not found. Please select a time slot manually.`);
+              }
             }
-          }, 800);
+          }, 1200);
+        } else {
+          addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
         }
-        
-        addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
       } catch(e){ 
         console.warn('Prefill booking failed', e);
         addMessage(msgContainer, `⚠️ Error filling form. Please fill manually.`);
