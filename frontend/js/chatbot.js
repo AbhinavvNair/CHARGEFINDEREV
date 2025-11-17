@@ -726,11 +726,32 @@
     // Prefill booking form if on booking page and provide confirm button in chat
     function handleBookFill(data){
       const { station, date, time, duration, vehicle } = data;
-      addMessage(msgContainer, `I can pre-fill the booking form for <strong>${station}</strong>.`);
+      
+      // Check if we're on the booking page
+      const bookingPageStationSelect = document.getElementById('station-select');
+      const isOnBookingPage = !!bookingPageStationSelect;
 
-      // If we're on the booking page, try to fill fields
+      if (!isOnBookingPage) {
+        // Not on booking page - navigate there and store booking data
+        addMessage(msgContainer, `📋 Preparing booking for <strong>${station}</strong>...`);
+        addMessage(msgContainer, `🔄 Opening booking page...`);
+        
+        // Store booking data in session storage for the booking page to pick up
+        sessionStorage.setItem('pending_booking', JSON.stringify({
+          station, date: date ? date.toISOString() : null, time, duration, vehicle
+        }));
+        
+        // Navigate to booking page after a short delay
+        setTimeout(() => {
+          window.location.href = '/booking.html';
+        }, 1000);
+        return;
+      }
+
+      // We're on the booking page - fill the form
+      addMessage(msgContainer, `📋 Filling booking form for <strong>${station}</strong>...`);
+
       try {
-        const bookingPageStationSelect = document.getElementById('station-select');
         const bookingDateInput = document.getElementById('booking-date');
         const durationSelect = document.getElementById('duration');
         const vehicleRadios = document.getElementsByName('vehicle-type');
@@ -738,27 +759,57 @@
         if (bookingPageStationSelect) {
           // select closest matching station
           const opt = Array.from(bookingPageStationSelect.options).find(o => o.value.toLowerCase().includes(station.toLowerCase()) || o.text.toLowerCase().includes(station.toLowerCase()));
-          if (opt) { bookingPageStationSelect.value = opt.value; bookingPageStationSelect.dispatchEvent(new Event('change')); }
+          if (opt) { 
+            bookingPageStationSelect.value = opt.value; 
+            bookingPageStationSelect.dispatchEvent(new Event('change'));
+            addMessage(msgContainer, `✅ Station selected: ${opt.text}`);
+          }
         }
 
         if (bookingDateInput && date instanceof Date && !isNaN(date)) {
           bookingDateInput.value = date.toISOString().split('T')[0];
+          addMessage(msgContainer, `✅ Date set: ${date.toLocaleDateString()}`);
         }
 
         if (duration && durationSelect) {
           // map minutes to select value if present
           const opt = Array.from(durationSelect.options).find(o => o.value === String(duration) || o.text.toLowerCase().includes(String(duration)));
-          if (opt) durationSelect.value = opt.value;
-          durationSelect.dispatchEvent(new Event('change'));
+          if (opt) {
+            durationSelect.value = opt.value;
+            durationSelect.dispatchEvent(new Event('change'));
+            addMessage(msgContainer, `✅ Duration set: ${opt.text}`);
+          }
         }
 
         if (vehicle && vehicleRadios && vehicleRadios.length){
           Array.from(vehicleRadios).forEach(r => { if (r.value === vehicle) r.checked = true; });
+          addMessage(msgContainer, `✅ Vehicle type: ${vehicle}`);
         }
-      } catch(e){ console.warn('Prefill booking failed', e); }
-
-      // Render a confirm button in chat — suggestion-only UI: clicking inserts 'confirm booking' into input
-      renderQuickReplies([{ label: 'Confirm booking', value: 'confirm booking' }]);
+        
+        // Select the time slot after a small delay to ensure slots are generated
+        if (time) {
+          setTimeout(() => {
+            const timeSlots = document.querySelectorAll('.time-slot');
+            const matchingSlot = Array.from(timeSlots).find(slot => 
+              slot.dataset.time === time || slot.textContent.trim() === time
+            );
+            
+            if (matchingSlot && !matchingSlot.classList.contains('booked')) {
+              matchingSlot.click();
+              addMessage(msgContainer, `✅ Time slot selected: ${time}`);
+            } else if (matchingSlot) {
+              addMessage(msgContainer, `⚠️ Time slot ${time} is already booked. Please select another.`);
+            } else {
+              addMessage(msgContainer, `⚠️ Time slot ${time} not found. Please select manually.`);
+            }
+          }, 800);
+        }
+        
+        addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+      } catch(e){ 
+        console.warn('Prefill booking failed', e);
+        addMessage(msgContainer, `⚠️ Error filling form. Please fill manually.`);
+      }
     }
 
     // Event listeners
@@ -822,6 +873,36 @@
           win.style.display = 'none';
         }
       });
+      
+      // Check for pending booking from navigation
+      const pendingBookingData = sessionStorage.getItem('pending_booking');
+      if (pendingBookingData) {
+        try {
+          const bookingData = JSON.parse(pendingBookingData);
+          
+          // Open the widget automatically
+          win.style.display = 'flex';
+          
+          // Add a message showing we're processing the booking
+          addMessage(msgContainer, `🔄 Completing your booking request...`);
+          
+          // Parse the date back to Date object if present
+          if (bookingData.date) {
+            bookingData.date = new Date(bookingData.date);
+          }
+          
+          // Small delay to ensure booking form is loaded, then fill it
+          setTimeout(() => {
+            handleBookFill(bookingData);
+            // Clear the pending booking
+            sessionStorage.removeItem('pending_booking');
+          }, 500);
+          
+        } catch(e) {
+          console.error('Error processing pending booking:', e);
+          sessionStorage.removeItem('pending_booking');
+        }
+      }
     }
 
     send.addEventListener('click', async () => {
