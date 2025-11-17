@@ -79,6 +79,68 @@
     el.appendChild(bubble);
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
+    
+    // Save to session storage
+    saveChatHistory(container);
+  }
+
+  // Save chat history to session storage
+  function saveChatHistory(container) {
+    try {
+      const messages = Array.from(container.querySelectorAll('.msg')).map(msg => ({
+        type: msg.classList.contains('user') ? 'user' : 'bot',
+        content: msg.querySelector('.bubble').innerHTML
+      }));
+      sessionStorage.setItem('chatbot_history', JSON.stringify(messages));
+      sessionStorage.setItem('chatbot_timestamp', Date.now().toString());
+    } catch (e) {
+      console.warn('Failed to save chat history:', e);
+    }
+  }
+
+  // Load chat history from session storage
+  function loadChatHistory(container) {
+    try {
+      const history = sessionStorage.getItem('chatbot_history');
+      const timestamp = sessionStorage.getItem('chatbot_timestamp');
+      
+      if (!history) return false;
+      
+      // Only load history if it's less than 1 hour old
+      const age = Date.now() - parseInt(timestamp || '0');
+      if (age > 3600000) { // 1 hour in milliseconds
+        clearChatHistory();
+        return false;
+      }
+      
+      const messages = JSON.parse(history);
+      if (messages && messages.length > 0) {
+        messages.forEach(msg => {
+          const el = document.createElement('div');
+          el.className = 'msg ' + msg.type;
+          const bubble = document.createElement('span');
+          bubble.className = 'bubble';
+          bubble.innerHTML = msg.content;
+          el.appendChild(bubble);
+          container.appendChild(el);
+        });
+        container.scrollTop = container.scrollHeight;
+        return true;
+      }
+    } catch (e) {
+      console.warn('Failed to load chat history:', e);
+    }
+    return false;
+  }
+
+  // Clear chat history
+  function clearChatHistory() {
+    try {
+      sessionStorage.removeItem('chatbot_history');
+      sessionStorage.removeItem('chatbot_timestamp');
+    } catch (e) {
+      console.warn('Failed to clear chat history:', e);
+    }
   }
 
   function findStationsList(){
@@ -233,9 +295,13 @@
       // Embedded mode on chatbot.html page
       chatbotPageContainer.innerHTML = `
         <div class="chatbot-embedded">
+          <div class="chatbot-header-bar">
+            <span class="chatbot-title"><i class="fas fa-robot"></i> EV Assistant</span>
+            <button class="chatbot-clear-btn" id="clearChatBtn"><i class="fas fa-trash-alt"></i> Clear</button>
+          </div>
           <div class="chatbot-messages" id="chatbotMessages"></div>
           <div class="chatbot-input">
-            <input type="text" id="chatbotInput" placeholder="Type a question..." />
+            <input type="text" id="chatbotInput" placeholder="Type your question or command..." />
             <button id="chatbotSend"><i class="fas fa-paper-plane"></i> Send</button>
           </div>
         </div>
@@ -697,13 +763,34 @@
 
     // Event listeners
     if (isEmbeddedMode) {
-      // Embedded mode - show welcome message immediately
-      addMessage(msgContainer, "Hello! I'm your EV charging assistant. I can help with bookings, hours, and station information.");
-      renderQuickReplies([
-        { label: 'List stations', value: 'list stations' },
-        { label: 'Find nearby', value: 'nearby' },
-        { label: 'Booking help', value: 'book' }
-      ]);
+      // Try to load previous chat history
+      const historyLoaded = loadChatHistory(msgContainer);
+      
+      if (!historyLoaded) {
+        // No history - show welcome message
+        addMessage(msgContainer, "Hello! I'm your EV charging assistant. I can help with bookings, hours, and station information.");
+        renderQuickReplies([
+          { label: 'List stations', value: 'list stations' },
+          { label: 'Find nearby', value: 'nearby' },
+          { label: 'Booking help', value: 'book' }
+        ]);
+      }
+      // If history was loaded, just display it without any message
+
+      // Setup clear chat button
+      const clearBtn = document.getElementById('clearChatBtn');
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          msgContainer.innerHTML = '';
+          clearChatHistory();
+          addMessage(msgContainer, "Hello! I'm your EV charging assistant. I can help with bookings, hours, and station information.");
+          renderQuickReplies([
+            { label: 'List stations', value: 'list stations' },
+            { label: 'Find nearby', value: 'nearby' },
+            { label: 'Booking help', value: 'book' }
+          ]);
+        };
+      }
 
       // Add click handlers to example buttons on the page
       const exampleButtons = document.querySelectorAll('.chatbot-examples-list li');
@@ -720,12 +807,17 @@
       toggle.addEventListener('click', () => {
         if (win.style.display === 'none') {
           win.style.display = 'flex';
-          addMessage(msgContainer, "Hello! I can help with bookings, hours and station lists.");
-          renderQuickReplies([
-            { label: 'List stations', value: 'list stations' },
-            { label: 'Find nearby', value: 'nearby' },
-            { label: 'Booking help', value: 'book' }
-          ]);
+          
+          // Try to load history
+          const historyLoaded = loadChatHistory(msgContainer);
+          if (!historyLoaded) {
+            addMessage(msgContainer, "Hello! I can help with bookings, hours and station lists.");
+            renderQuickReplies([
+              { label: 'List stations', value: 'list stations' },
+              { label: 'Find nearby', value: 'nearby' },
+              { label: 'Booking help', value: 'book' }
+            ]);
+          }
         } else {
           win.style.display = 'none';
         }

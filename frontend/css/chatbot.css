@@ -91,6 +91,41 @@
   overflow: hidden;
 }
 
+.chatbot-header-bar {
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.chatbot-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chatbot-clear-btn {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.3s;
+}
+
+.chatbot-clear-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
 .chatbot-embedded .chatbot-messages {
   flex: 1 1 auto;
   padding: 20px;
