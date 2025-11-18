@@ -1,6 +1,104 @@
 (function(){
-  // ===== COMPREHENSIVE CHATBOT v2.0 =====
-  // Enhanced with support for 20+ station fields, smart filtering, comparisons, and rich responses
+  // ===== SMART CHATBOT v3.0 =====
+  // Enhanced with AI-like intelligence: context memory, personalization, NLU, and proactive suggestions
+  
+  // ===== SMART CONTEXT & MEMORY SYSTEM =====
+  const conversationContext = {
+    lastQuery: null,
+    lastStations: [],
+    lastStation: null,
+    lastAction: null,
+    queryHistory: [],
+    sessionStartTime: Date.now(),
+    messageCount: 0,
+    topics: [],
+    pendingAction: null,
+    compareFirst: null,
+    followup: null
+  };
+  
+  // User preferences and learning
+  const userPreferences = {
+    favoriteStations: [],
+    vehicleType: null,
+    preferredAmenities: [],
+    priceRange: null,
+    visitedStations: [],
+    commonQueries: [],
+    lastLocation: null
+  };
+  
+  // Load user preferences from localStorage
+  function loadUserPreferences() {
+    try {
+      const saved = localStorage.getItem('ev_user_preferences');
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        Object.assign(userPreferences, prefs);
+      }
+    } catch(e) {
+      console.warn('Failed to load preferences:', e);
+    }
+  }
+  
+  // Save user preferences
+  function saveUserPreferences() {
+    try {
+      localStorage.setItem('ev_user_preferences', JSON.stringify(userPreferences));
+    } catch(e) {
+      console.warn('Failed to save preferences:', e);
+    }
+  }
+  
+  // Learn from user interactions
+  function learnFromInteraction(query, action, station) {
+    conversationContext.queryHistory.push({ query, action, station, timestamp: Date.now() });
+    
+    // Track common queries
+    const queryType = action || 'general';
+    const existing = userPreferences.commonQueries.find(q => q.type === queryType);
+    if (existing) {
+      existing.count++;
+    } else {
+      userPreferences.commonQueries.push({ type: queryType, count: 1 });
+    }
+    
+    // Track visited stations
+    if (station && !userPreferences.visitedStations.includes(station)) {
+      userPreferences.visitedStations.push(station);
+    }
+    
+    saveUserPreferences();
+  }
+  
+  // Get personalized recommendations
+  function getPersonalizedSuggestions() {
+    const suggestions = [];
+    
+    // Suggest based on favorites
+    if (userPreferences.favoriteStations.length > 0) {
+      suggestions.push({ label: `⭐ View Favorites`, value: 'show my favorites' });
+    }
+    
+    // Suggest based on vehicle type
+    if (userPreferences.vehicleType) {
+      suggestions.push({ label: `🚗 Best for ${userPreferences.vehicleType}`, value: `best stations for ${userPreferences.vehicleType}` });
+    }
+    
+    // Suggest based on preferred amenities
+    if (userPreferences.preferredAmenities.length > 0) {
+      const amenity = userPreferences.preferredAmenities[0];
+      suggestions.push({ label: `🎯 Stations with ${amenity}`, value: `stations with ${amenity}` });
+    }
+    
+    // Suggest based on recent visits
+    if (userPreferences.visitedStations.length > 0) {
+      const recent = userPreferences.visitedStations[userPreferences.visitedStations.length - 1];
+      suggestions.push({ label: `🔄 Return to ${recent}`, value: `details for ${recent}` });
+    }
+    
+    return suggestions.slice(0, 4);
+  }
   
   const synonyms = {
     greeting: ['hello','hi','hey','yo','namaste','good morning','good evening'],
@@ -176,6 +274,146 @@
     }
   }
 
+  // ===== SMART INTENT DETECTION =====
+  function detectIntent(query) {
+    const intents = [
+      {
+        patterns: [/cheaper/i, /less expensive/i, /save money/i, /budget/i],
+        action: 'find_cheap',
+        confidence: 0.9
+      },
+      {
+        patterns: [/best/i, /top/i, /recommend/i, /suggest/i],
+        action: 'recommend',
+        confidence: 0.85
+      },
+      {
+        patterns: [/fast/i, /quick/i, /rapid/i, /speedy/i],
+        action: 'find_fast',
+        confidence: 0.9
+      },
+      {
+        patterns: [/open now/i, /available now/i, /can I charge now/i],
+        action: 'find_available',
+        confidence: 0.95
+      },
+      {
+        patterns: [/compare.*with/i, /difference between/i, /which is better/i],
+        action: 'compare',
+        confidence: 0.9
+      },
+      {
+        patterns: [/help/i, /how do/i, /what can you/i, /capabilities/i],
+        action: 'help',
+        confidence: 0.8
+      }
+    ];
+    
+    for (const intent of intents) {
+      for (const pattern of intent.patterns) {
+        if (pattern.test(query)) {
+          return { action: intent.action, confidence: intent.confidence, params: extractParams(query) };
+        }
+      }
+    }
+    
+    return { action: null, confidence: 0 };
+  }
+  
+  // Extract parameters from query
+  function extractParams(query) {
+    const params = {};
+    
+    // Extract location
+    const locationMatch = query.match(/(?:near|at|in)\s+([a-z\s]+?)(?:\s|$)/i);
+    if (locationMatch) params.location = locationMatch[1].trim();
+    
+    // Extract price range
+    const priceMatch = query.match(/under\s+(\d+)/i) || query.match(/less than\s+(\d+)/i);
+    if (priceMatch) params.maxPrice = parseInt(priceMatch[1]);
+    
+    // Extract amenities
+    if (query.includes('parking')) params.amenities = params.amenities || []; params.amenities.push('parking');
+    if (query.includes('wifi')) params.amenities = params.amenities || []; params.amenities.push('wifi');
+    if (query.includes('cafe')) params.amenities = params.amenities || []; params.amenities.push('cafe');
+    
+    return params;
+  }
+  
+  // ===== TYPO CORRECTION & FUZZY MATCHING =====
+  function correctTypos(query) {
+    const corrections = {
+      'prise': 'price', 'prcie': 'price', 'priice': 'price',
+      'staton': 'station', 'staion': 'station', 'sation': 'station',
+      'amenites': 'amenities', 'ammenities': 'amenities', 'amentities': 'amenities',
+      'bokking': 'booking', 'boking': 'booking', 'bookin': 'booking',
+      'nearb': 'nearby', 'neaby': 'nearby',
+      'comparision': 'comparison', 'comapre': 'compare',
+      'availabe': 'available', 'availble': 'available',
+      'cheepest': 'cheapest', 'cheapst': 'cheapest',
+      'fastst': 'fastest', 'fatest': 'fastest'
+    };
+    
+    let corrected = query;
+    for (const [typo, correct] of Object.entries(corrections)) {
+      const regex = new RegExp(`\\b${typo}\\b`, 'gi');
+      corrected = corrected.replace(regex, correct);
+    }
+    
+    return corrected;
+  }
+  
+  // Check if query is a follow-up
+  function isFollowUpQuery(query) {
+    const followUpIndicators = [
+      /^(what about|how about|and)/i,
+      /^(is it|does it|can I|do they)/i,
+      /^(which one|that one|this one)/i,
+      /^(more|tell me more|details)/i,
+      /^(compare|versus|vs)/i,
+      /^(book it|reserve it|take it)/i
+    ];
+    
+    return followUpIndicators.some(pattern => pattern.test(query));
+  }
+  
+  // Handle contextual follow-up queries
+  function handleContextualQuery(query) {
+    const lastStation = conversationContext.lastStation;
+    const lastStations = conversationContext.lastStations;
+    
+    // "What about parking?" after viewing a station
+    if (lastStation && /what about|how about/.test(query)) {
+      if (/parking/.test(query)) return { type: 'check_amenity', station: lastStation, amenity: 'parking' };
+      if (/wifi/.test(query)) return { type: 'check_amenity', station: lastStation, amenity: 'wifi' };
+      if (/cafe/.test(query)) return { type: 'check_amenity', station: lastStation, amenity: 'cafe' };
+      if (/price|cost/.test(query)) return { type: 'station_query', q: lastStation, field: 'price' };
+      if (/hours|timing/.test(query)) return { type: 'station_query', q: lastStation, field: 'hours' };
+    }
+    
+    // "Which one is cheaper?" after listing stations
+    if (lastStations.length > 0 && /which one|which is/.test(query)) {
+      if (/cheap|less expensive|affordable/.test(query)) {
+        return { type: 'smart_intent', intent: 'find_cheap_from_context', params: { stations: lastStations } };
+      }
+      if (/fast|quick|rapid/.test(query)) {
+        return { type: 'smart_intent', intent: 'find_fast_from_context', params: { stations: lastStations } };
+      }
+    }
+    
+    // "Book it" or "Take me there"
+    if (lastStation && /book it|reserve it|take it|book that/.test(query)) {
+      return { type: 'action', name: 'book_last', station: lastStation };
+    }
+    
+    // "Compare them" after showing 2+ stations
+    if (lastStations.length >= 2 && /compare them|compare these|compare all/.test(query)) {
+      return { type: 'compare_stations', stations: lastStations.slice(0, 2) };
+    }
+    
+    return null;
+  }
+  
   function findStationsList(){
     // Try to get station names from page lists or fetch API
     try {
@@ -187,20 +425,71 @@
   }
 
   function replyTo(input){
-    const text = input.trim();
+    let text = input.trim();
     if (!text) return "Please type something so I can help.";
 
+    // Apply typo correction
+    const corrected = correctTypos(text);
+    if (corrected !== text) {
+      // Notify user about correction
+      console.log(`Typo corrected: "${text}" -> "${corrected}"`);
+    }
+    text = corrected;
+
     const t = text.toLowerCase();
+    
+    // Track conversation context
+    conversationContext.messageCount++;
+    conversationContext.lastQuery = text;
+    conversationContext.queryHistory.push({ query: text, timestamp: Date.now() });
+    
+    // ===== SMART CONTEXT-AWARE QUERIES =====
+    // Handle follow-up questions without repeating context
+    if (isFollowUpQuery(t)) {
+      const contextual = handleContextualQuery(t);
+      if (contextual) return contextual;
+    }
+    
+    // ===== PERSONALIZATION QUERIES =====
+    if (t.includes('my favorites') || t.includes('favorite stations')) {
+      return { type: 'action', name: 'show_favorites' };
+    }
+    
+    if (t.includes('set') && (t.includes('favorite') || t.includes('prefer'))) {
+      const match = t.match(/set\s+(.+?)\s+as\s+favorite/i) || t.match(/add\s+(.+?)\s+to\s+favorites/i);
+      if (match) {
+        const station = match[1].trim();
+        return { type: 'action', name: 'add_favorite', station };
+      }
+    }
+    
+    if (t.includes('my') && (t.includes('vehicle') || t.includes('car') || t.includes('bike'))) {
+      const vehicleMatch = t.match(/my\s+vehicle\s+is\s+(car|bike|scooter)/i) || 
+                          t.match(/i\s+have\s+a\s+(car|bike|scooter)/i) ||
+                          t.match(/i\s+drive\s+a\s+(car|bike|scooter)/i);
+      if (vehicleMatch) {
+        userPreferences.vehicleType = vehicleMatch[1].toLowerCase();
+        saveUserPreferences();
+        return `✅ Got it! I'll remember you have a ${vehicleMatch[1]}. I can now give you personalized recommendations!`;
+      }
+    }
+    
+    // ===== SMART INTENT RECOGNITION =====
+    const intent = detectIntent(t);
+    if (intent.confidence > 0.7 && intent.action) {
+      return { type: 'smart_intent', intent: intent.action, confidence: intent.confidence, params: intent.params };
+    }
 
     // ===== BOOKING COMMAND =====
-    const bookMatch = t.match(/book\s+(.+?)\s+on\s+(today|tomorrow|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4})\s+at\s+(\d{1,2}:\d{2})(?:\s+for\s+([0-9]+)\s*(min|mins|minutes|h|hrs|hours)?)?(?:.*\b(car|bike|scooter)\b)?/i);
-    if (bookMatch) {
-      const station = bookMatch[1].trim();
-      let dateStr = bookMatch[2].trim();
-      const time = bookMatch[3].trim();
-      const durNum = bookMatch[4];
-      const durUnit = bookMatch[5] || '';
-      const vehicle = (bookMatch[6] || '').toLowerCase();
+    // Check for complete booking command with all details
+    const fullBookMatch = t.match(/book\s+(.+?)\s+on\s+(today|tomorrow|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4})\s+at\s+(\d{1,2}:\d{2})(?:\s+for\s+([0-9]+)\s*(min|mins|minutes|h|hrs|hours)?)?(?:.*\b(car|bike|scooter)\b)?/i);
+    if (fullBookMatch) {
+      const station = fullBookMatch[1].trim();
+      let dateStr = fullBookMatch[2].trim();
+      const time = fullBookMatch[3].trim();
+      const durNum = fullBookMatch[4];
+      const durUnit = fullBookMatch[5] || '';
+      const vehicle = (fullBookMatch[6] || '').toLowerCase();
 
       let dateVal = null;
       if (/^today$/i.test(dateStr)) dateVal = new Date();
@@ -219,6 +508,13 @@
 
       const payload = { station, date: dateVal, time, duration: durationMins, vehicle };
       return { type: 'book_fill', data: payload };
+    }
+    
+    // Check for partial booking command - initiate interactive flow
+    const simpleBookMatch = t.match(/^(?:book|reserve|booking)(?:\s+(.+))?$/i);
+    if (simpleBookMatch) {
+      const stationHint = simpleBookMatch[1]?.trim();
+      return { type: 'start_booking_flow', station: stationHint || null };
     }
 
     // ===== COMPARISON QUERIES =====
@@ -547,8 +843,62 @@
 
     async function handleAction(actionObj){
       // actionObj may be a string or an object { type: 'action', action: 'name', ... }
-      const action = (typeof actionObj === 'string') ? actionObj : (actionObj.action || null);
+      const action = (typeof actionObj === 'string') ? actionObj : (actionObj.action || actionObj.name || null);
       const payload = (typeof actionObj === 'object') ? actionObj : {};
+
+      // ===== SMART PERSONALIZATION ACTIONS =====
+      if (action === 'show_favorites') {
+        if (userPreferences.favoriteStations.length === 0) {
+          addMessage(msgContainer, '⭐ You haven\'t added any favorite stations yet. To add one, say "add [station name] to favorites"');
+          return;
+        }
+        
+        addMessage(msgContainer, `⭐ Your Favorite Stations (${userPreferences.favoriteStations.length}):`);
+        userPreferences.favoriteStations.forEach((name, i) => {
+          addMessage(msgContainer, `${i + 1}. ${name}`);
+        });
+        
+        renderQuickReplies(userPreferences.favoriteStations.slice(0, 4).map(name => ({
+          label: `📍 ${name}`,
+          value: `details for ${name}`
+        })));
+        return;
+      }
+      
+      if (action === 'add_favorite') {
+        const stationName = payload.station;
+        if (!stationName) {
+          addMessage(msgContainer, '❌ Please specify which station to add to favorites.');
+          return;
+        }
+        
+        if (!userPreferences.favoriteStations.includes(stationName)) {
+          userPreferences.favoriteStations.push(stationName);
+          saveUserPreferences();
+          addMessage(msgContainer, `⭐ Added "${stationName}" to your favorites!`);
+        } else {
+          addMessage(msgContainer, `ℹ️ "${stationName}" is already in your favorites.`);
+        }
+        return;
+      }
+      
+      if (action === 'book_last') {
+        const station = payload.station || conversationContext.lastStation;
+        if (!station) {
+          addMessage(msgContainer, '❌ I don\'t remember which station you were looking at. Please specify the station name.');
+          return;
+        }
+        
+        addMessage(msgContainer, `📅 Let's book ${station}!`);
+        addMessage(msgContainer, `I'll help you fill the booking form. Redirecting to booking page...`);
+        
+        // Store booking intent and redirect
+        sessionStorage.setItem('pending_booking', JSON.stringify({ station, date: new Date() }));
+        setTimeout(() => {
+          window.location.href = 'booking.html';
+        }, 1000);
+        return;
+      }
 
       if (action === 'list_stations'){
         addMessage(msgContainer, '🔍 Loading all stations...');
@@ -576,12 +926,26 @@
           addMessage(msgContainer, `...and ${stations.length - 10} more stations`);
         }
         
-        renderQuickReplies([
-          { label: '🌐 Public Only', value: 'show public stations' },
+        // Smart time-based suggestions
+        const hour = new Date().getHours();
+        const suggestions = [
           { label: '💰 Cheapest', value: 'cheapest station' },
-          { label: '🟢 Available', value: 'available stations' },
-          { label: '⚡ Fast Charging', value: 'fast charging stations' }
-        ]);
+          { label: '🟢 Available', value: 'available stations' }
+        ];
+        
+        if (hour >= 7 && hour <= 10 || hour >= 17 && hour <= 20) {
+          // Rush hour - suggest fast charging
+          suggestions.unshift({ label: '⚡ Fast Charging', value: 'fast charging stations' });
+        } else {
+          // Off-peak - suggest amenities
+          suggestions.push({ label: '☕ With Cafe', value: 'stations with cafe' });
+        }
+        
+        if (userPreferences.vehicleType) {
+          suggestions.push({ label: `🎯 Best for ${userPreferences.vehicleType}`, value: `best stations for ${userPreferences.vehicleType}` });
+        }
+        
+        renderQuickReplies(suggestions);
       }
       if (action === 'confirm_booking'){
         addMessage(msgContainer, 'Attempting to confirm your booking...');
@@ -856,6 +1220,11 @@
         context.lastStationSearch = results;
         context.lastStation = s;
         
+        // Smart context tracking
+        conversationContext.lastStation = s.name;
+        conversationContext.lastStations = results;
+        conversationContext.lastAction = field;
+        
         // ===== HOURS =====
         if (field === 'hours'){
           const hours = s.openingHours || '24/7';
@@ -883,11 +1252,22 @@
           }
           
           addMessage(msgContainer, priceInfo.join('<br>'));
-          renderQuickReplies([
+          
+          const priceSuggestions = [
             { label: `📅 Hours`, value: `hours for ${s.name}` },
             { label: `🎯 Amenities`, value: `amenities at ${s.name}` },
             { label: `📅 Book`, value: `book ${s.name} on today at 10:00` }
-          ]);
+          ];
+          
+          // Proactive comparison suggestion if user has viewed other stations
+          if (conversationContext.lastStations.length > 1) {
+            const otherStation = conversationContext.lastStations.find(st => st.name !== s.name);
+            if (otherStation) {
+              priceSuggestions.push({ label: `⚖️ Compare with ${otherStation.name}`, value: `compare ${s.name} and ${otherStation.name}` });
+            }
+          }
+          
+          renderQuickReplies(priceSuggestions);
           return;
         }
         
@@ -1100,6 +1480,10 @@
           return addMessage(msgContainer, '❌ No stations match your criteria.');
         }
         
+        // Smart context tracking
+        conversationContext.lastStations = stations;
+        conversationContext.lastAction = 'filter';
+        
         const filterDesc = Object.entries(filters).map(([k, v]) => `${v}`).join(', ');
         addMessage(msgContainer, `✅ Found ${stations.length} <strong>${filterDesc}</strong> station(s):`);
         
@@ -1109,7 +1493,17 @@
           addMessage(msgContainer, `${accessIcon} ${statusIcon} <strong>${s.name}</strong> - ${s.chargingSpeed || 'Standard'} - ${s.address?.area || 'Jaipur'}`);
         });
         
-        renderQuickReplies(
+        // Proactive suggestions based on filter results
+        const suggestions = [];
+        if (stations.length > 1) {
+          suggestions.push({ label: '🤔 Which one is cheaper?', value: 'which one is cheaper' });
+          suggestions.push({ label: '⚖️ Compare first two', value: `compare ${stations[0].name} and ${stations[1].name}` });
+        }
+        if (stations.length > 0) {
+          suggestions.push({ label: `📋 Details: ${stations[0].name}`, value: `details for ${stations[0].name}` });
+        }
+        
+        renderQuickReplies(suggestions.length > 0 ? suggestions : 
           stations.slice(0, 3).map(s => ({ label: s.name, value: `hours for ${s.name}` }))
         );
       } catch (e) {
@@ -1210,6 +1604,21 @@
           return addMessage(msgContainer, '❌ No stations available.');
         }
         
+        // Smart filtering based on user vehicle type
+        if (userPreferences.vehicleType && criterion !== 'cheapest') {
+          const filtered = stations.filter(s => {
+            if (!s.connectorTypes) return true;
+            const compatible = compatibilityMap[userPreferences.vehicleType] || [];
+            return s.connectorTypes.some(c => compatible.includes(c));
+          });
+          if (filtered.length > 0) {
+            stations = filtered;
+            addMessage(msgContainer, `✅ <em>Filtered for your ${userPreferences.vehicleType}</em>`);
+          }
+        }
+        
+        conversationContext.lastStations = stations;
+        
         if (criterion === 'cheapest') {
           // Sort by price
           stations = stations.filter(s => s.pricing && s.pricing.perUnit)
@@ -1255,6 +1664,31 @@
     }
 
     async function handleUserInput(raw){
+      // Handle booking flow state
+      if (context.bookingFlow) {
+        return handleBookingFlowStep(raw);
+      }
+      
+      // Handle special action values
+      if (raw.startsWith('compare-first:')) {
+        const firstStation = raw.replace('compare-first:', '').trim();
+        context.compareFirst = firstStation;
+        
+        const stations = await fetchStations();
+        const remaining = stations.filter(s => s.name !== firstStation).slice(0, 10);
+        
+        addMessage(msgContainer, `Selected: ${firstStation}`);
+        addMessage(msgContainer, 'Now select the second station to compare:');
+        
+        const stationButtons = remaining.map(s => ({
+          label: `📍 ${s.name}`,
+          value: `compare ${firstStation} and ${s.name}`
+        }));
+        
+        renderQuickReplies(stationButtons);
+        return;
+      }
+      
       const res = replyTo(raw);
       
       // Handle follow-up contexts
@@ -1270,7 +1704,9 @@
       
       // Route to appropriate handlers
       if (res.type === 'action') return handleAction(res);
+      if (res.type === 'smart_intent') return handleSmartIntent(res);
       if (res.type === 'intent') return handleIntent(res.intent);
+      if (res.type === 'start_booking_flow') return startBookingFlow(res.station);
       if (res.type === 'station_query') return handleStationQuery(res.q, res.field);
       if (res.type === 'book_fill') return handleBookFill(res.data);
       if (res.type === 'connector_query') return handleConnectorQuery(res.station, res.vehicle);
@@ -1280,6 +1716,548 @@
       if (res.type === 'compare_stations') return handleCompareStations(res.stations);
       if (res.type === 'recommend') return handleRecommendation(res.criterion);
       if (res.type === 'fallback') return addMessage(msgContainer, res.text);
+      
+      // Learn from this interaction
+      learnFromInteraction(raw, res.type, conversationContext.lastStation);
+    }
+
+    // ===== SMART INTENT HANDLER =====
+    async function handleSmartIntent(res) {
+      const intent = res.intent;
+      const params = res.params || {};
+      const confidence = res.confidence || 0;
+      
+      addMessage(msgContainer, `🤖 Understanding your request... (${Math.round(confidence * 100)}% confident)`);
+      
+      if (intent === 'find_cheap') {
+        return handleRecommendation('cheapest');
+      }
+      
+      if (intent === 'find_fast') {
+        addMessage(msgContainer, '⚡ Finding fast charging stations...');
+        return handleFilterStations({ speed: 'fast' });
+      }
+      
+      if (intent === 'find_available') {
+        addMessage(msgContainer, '🟢 Finding available stations...');
+        return handleFilterStations({ status: 'Available' });
+      }
+      
+      if (intent === 'recommend') {
+        // Provide personalized recommendation
+        const stations = await fetchStations();
+        const personalized = getPersonalizedRecommendation(stations, params);
+        
+        if (personalized) {
+          conversationContext.lastStation = personalized.name;
+          addMessage(msgContainer, `⭐ <strong>Smart Recommendation:</strong> ${personalized.name}`);
+          addMessage(msgContainer, `📍 ${personalized.address?.area || 'Jaipur'}`);
+          addMessage(msgContainer, `💰 ${personalized.pricing?.perUnit ? '₹' + personalized.pricing.perUnit + '/kWh' : 'Pricing available'}`);
+          addMessage(msgContainer, `\n<em>Reason: ${personalized.reason}</em>`);
+          
+          renderQuickReplies([
+            { label: '📋 Full Details', value: `details for ${personalized.name}` },
+            { label: '📅 Book Now', value: `book ${personalized.name}` },
+            { label: '⭐ Add to Favorites', value: `add ${personalized.name} to favorites` }
+          ]);
+        } else {
+          addMessage(msgContainer, '🤔 Let me show you all available stations:');
+          return handleAction({ action: 'list_stations' });
+        }
+        return;
+      }
+      
+      if (intent === 'find_cheap_from_context') {
+        const stations = params.stations || conversationContext.lastStations;
+        if (stations.length === 0) {
+          return addMessage(msgContainer, '❌ No stations in context. Try "cheapest station" to search all.');
+        }
+        
+        const sorted = stations.filter(s => s.pricing?.perUnit).sort((a, b) => a.pricing.perUnit - b.pricing.perUnit);
+        if (sorted.length > 0) {
+          const cheapest = sorted[0];
+          conversationContext.lastStation = cheapest.name;
+          addMessage(msgContainer, `💰 <strong>Cheapest from the list:</strong> ${cheapest.name} at ₹${cheapest.pricing.perUnit}/kWh`);
+          
+          renderQuickReplies([
+            { label: '📋 Details', value: `details for ${cheapest.name}` },
+            { label: '📅 Book', value: `book ${cheapest.name}` }
+          ]);
+        } else {
+          addMessage(msgContainer, '❌ Pricing information not available for these stations.');
+        }
+        return;
+      }
+      
+      if (intent === 'find_fast_from_context') {
+        const stations = params.stations || conversationContext.lastStations;
+        const fast = stations.filter(s => s.chargingSpeed === 'Fast' || s.chargingSpeed === 'Ultra Fast');
+        
+        if (fast.length > 0) {
+          addMessage(msgContainer, `⚡ <strong>Fast chargers from the list:</strong>`);
+          fast.slice(0, 5).forEach((s, i) => {
+            addMessage(msgContainer, `${i + 1}. ${s.name} - ${s.chargingSpeed}`);
+          });
+        } else {
+          addMessage(msgContainer, '❌ No fast chargers in the current list.');
+        }
+        return;
+      }
+      
+      if (intent === 'help') {
+        showSmartHelp();
+        return;
+      }
+    }
+    
+    // Get personalized recommendation based on user preferences and history
+    function getPersonalizedRecommendation(stations, params) {
+      if (!stations || stations.length === 0) return null;
+      
+      let scored = stations.map(s => {
+        let score = 0;
+        let reasons = [];
+        
+        // Prefer favorites
+        if (userPreferences.favoriteStations.includes(s.name)) {
+          score += 50;
+          reasons.push('your favorite');
+        }
+        
+        // Prefer previously visited
+        if (userPreferences.visitedStations.includes(s.name)) {
+          score += 20;
+          reasons.push('you visited before');
+        }
+        
+        // Vehicle compatibility
+        if (userPreferences.vehicleType && s.connectorTypes) {
+          const compatible = compatibilityMap[userPreferences.vehicleType] || [];
+          const hasCompatible = s.connectorTypes.some(c => compatible.includes(c));
+          if (hasCompatible) {
+            score += 30;
+            reasons.push(`compatible with your ${userPreferences.vehicleType}`);
+          }
+        }
+        
+        // Preferred amenities
+        if (userPreferences.preferredAmenities.length > 0 && s.amenities) {
+          userPreferences.preferredAmenities.forEach(amenity => {
+            if (s.amenities[amenity]) {
+              score += 15;
+              reasons.push(`has ${amenity}`);
+            }
+          });
+        }
+        
+        // Available status
+        if (s.status === 'Available') {
+          score += 25;
+          reasons.push('available now');
+        }
+        
+        // Public access
+        if (s.accessType === 'Public') {
+          score += 10;
+        }
+        
+        // Good pricing
+        if (s.pricing?.perUnit && s.pricing.perUnit < 12) {
+          score += 20;
+          reasons.push('good pricing');
+        }
+        
+        return { ...s, score, reason: reasons.join(', ') || 'matches your criteria' };
+      });
+      
+      scored.sort((a, b) => b.score - a.score);
+      return scored[0];
+    }
+    
+    // Show smart help with personalized tips
+    function showSmartHelp() {
+      addMessage(msgContainer, `🤖 <strong>Smart Assistant Help</strong>\n\nI understand natural language! Try:\n\n<strong>Smart Queries:</strong>\n• "Which one is cheaper?" (after viewing stations)\n• "What about parking?" (after viewing a station)\n• "Book it" (to book the last station)\n• "Compare them" (after listing stations)\n\n<strong>Personalization:</strong>\n• "My vehicle is a car/bike/scooter"\n• "Add [station] to favorites"\n• "Show my favorites"\n\n<strong>Context-Aware:</strong>\nI remember our conversation and can answer follow-up questions without repeating!`);
+      
+      const personalizedSuggestions = getPersonalizedSuggestions();
+      if (personalizedSuggestions.length > 0) {
+        addMessage(msgContainer, `\n<strong>Your Personalized Options:</strong>`);
+        renderQuickReplies(personalizedSuggestions);
+      }
+    }
+
+    // ===== INTERACTIVE BOOKING FLOW =====
+    async function startBookingFlow(stationHint) {
+      context.bookingFlow = {
+        step: 'station',
+        data: {}
+      };
+      
+      addMessage(msgContainer, '📅 <strong>Let\'s book a charging slot!</strong>');
+      addMessage(msgContainer, 'I\'ll guide you through the process. Type "cancel" anytime to stop.');
+      
+      if (stationHint) {
+        // User provided station hint, verify it
+        const results = await searchStationsApi(stationHint);
+        if (results && results.length > 0) {
+          context.bookingFlow.data.station = results[0].name;
+          context.bookingFlow.step = 'date';
+          addMessage(msgContainer, `✅ Station selected: <strong>${results[0].name}</strong>`);
+          askForDate();
+          return;
+        }
+      }
+      
+      // Ask for station
+      addMessage(msgContainer, '<strong>Step 1/5:</strong> Which station would you like to book?');
+      const stations = await window.fetchStations();
+      
+      if (stations && stations.length > 0) {
+        const availableStations = stations.filter(s => s.status === 'Available');
+        const stationsToShow = availableStations.length > 0 ? availableStations : stations;
+        
+        renderQuickReplies(
+          stationsToShow.slice(0, 8).map(s => ({
+            label: `${s.status === 'Available' ? '🟢' : '🟡'} ${s.name}`,
+            value: s.name
+          }))
+        );
+      }
+    }
+    
+    function askForDate() {
+      addMessage(msgContainer, '<strong>Step 2/5:</strong> When would you like to book?');
+      
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfter = new Date(today);
+      dayAfter.setDate(dayAfter.getDate() + 2);
+      
+      const formatDate = (d) => `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+      
+      renderQuickReplies([
+        { label: '📅 Today', value: 'today' },
+        { label: '📅 Tomorrow', value: 'tomorrow' },
+        { label: `📅 ${formatDate(dayAfter)}`, value: formatDate(dayAfter) },
+        { label: '📅 Custom Date', value: 'custom date' }
+      ]);
+    }
+    
+    async function askForTime() {
+      addMessage(msgContainer, '<strong>Step 3/5:</strong> What time would you like to charge?');
+      
+      // Get the selected station to show only available slots
+      const stationName = context.bookingFlow.data.station;
+      let availableSlots = [];
+      
+      try {
+        const stations = await window.fetchStations();
+        const selectedStation = stations.find(s => s.name === stationName);
+        
+        if (selectedStation) {
+          // Get opening hours
+          let startHour = 8, endHour = 22; // Default hours
+          const openingHours = selectedStation.openingHours || '8 AM - 10 PM';
+          
+          // Parse opening hours if they're in "HH AM - HH PM" format
+          if (openingHours === '24/7') {
+            startHour = 0;
+            endHour = 23;
+          } else if (openingHours.includes('AM') || openingHours.includes('PM')) {
+            const [openStr, closeStr] = openingHours.split(' - ');
+            startHour = parseHour(openStr);
+            endHour = parseHour(closeStr);
+          }
+          
+          // Generate available slots based on station status
+          const isStationBusy = selectedStation.status === "Busy";
+          
+          for (let hour = startHour; hour <= endHour; hour++) {
+            for (let minutes of ['00', '30']) {
+              // Skip if it would go past closing time
+              if (hour === endHour && minutes === '30') continue;
+              
+              const time = `${hour.toString().padStart(2, '0')}:${minutes}`;
+              
+              // Check if slot is available (simulate booking logic)
+              // If station is busy, fewer slots are available
+              const isAvailable = isStationBusy ? Math.random() > 0.7 : Math.random() > 0.3;
+              
+              if (isAvailable) {
+                availableSlots.push(time);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching station data:', e);
+      }
+      
+      // If we couldn't get available slots, provide default time options
+      if (availableSlots.length === 0) {
+        availableSlots = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
+      }
+      
+      // Smart time suggestions based on current time and available slots
+      const hour = new Date().getHours();
+      const suggestions = [];
+      
+      // Filter available slots to show the most relevant ones based on current time
+      const relevantSlots = availableSlots.filter(slot => {
+        const slotHour = parseInt(slot.split(':')[0]);
+        if (hour < 10) {
+          return slotHour >= 10 && slotHour <= 14;
+        } else if (hour < 14) {
+          return slotHour >= 14 && slotHour <= 18;
+        } else {
+          return slotHour >= 16 && slotHour <= 20;
+        }
+      });
+      
+      // Take up to 3 relevant slots
+      const slotsToShow = relevantSlots.length > 0 ? relevantSlots.slice(0, 3) : availableSlots.slice(0, 3);
+      
+      // Add emoji based on time of day
+      slotsToShow.forEach(slot => {
+        const slotHour = parseInt(slot.split(':')[0]);
+        let emoji = '⏰';
+        if (slotHour < 12) emoji = '🌅';
+        else if (slotHour < 15) emoji = '☀️';
+        else if (slotHour < 18) emoji = '🌤️';
+        else if (slotHour < 20) emoji = '🌆';
+        else emoji = '🌙';
+        
+        suggestions.push({ label: `${emoji} ${slot}`, value: slot });
+      });
+      
+      suggestions.push({ label: '⏰ Custom Time', value: 'custom time' });
+      
+      renderQuickReplies(suggestions);
+      
+      // Store available slots for validation
+      context.bookingFlow.availableSlots = availableSlots;
+    }
+    
+    // Helper function to parse hour from "HH AM/PM" format
+    function parseHour(timeStr) {
+      if (!timeStr) return 8;
+      
+      const [time, period] = timeStr.trim().split(' ');
+      let hour = parseInt(time);
+      
+      if (period === 'PM' && hour < 12) hour += 12;
+      if (period === 'AM' && hour === 12) hour = 0;
+      
+      return hour;
+    }
+    
+    function askForDuration() {
+      addMessage(msgContainer, '<strong>Step 4/5:</strong> How long do you need? (Optional)');
+      
+      renderQuickReplies([
+        { label: '⚡ 30 minutes', value: '30 minutes' },
+        { label: '⏱️ 1 hour', value: '1 hour' },
+        { label: '⏱️ 2 hours', value: '2 hours' },
+        { label: '⏱️ 3 hours', value: '3 hours' },
+        { label: '⏭️ Skip', value: 'skip duration' }
+      ]);
+    }
+    
+    function askForVehicle() {
+      addMessage(msgContainer, '<strong>Step 5/5:</strong> What type of vehicle are you charging?');
+      
+      renderQuickReplies([
+        { label: '🚗 Car', value: 'car' },
+        { label: '🏍️ Bike', value: 'bike' },
+        { label: '🛵 Scooter', value: 'scooter' },
+        { label: '⏭️ Skip', value: 'skip vehicle' }
+      ]);
+    }
+    
+    async function handleBookingFlowStep(input) {
+      const step = context.bookingFlow.step;
+      const data = context.bookingFlow.data;
+      const text = input.trim();
+      
+      if (text.toLowerCase() === 'cancel' || text.toLowerCase() === 'stop') {
+        context.bookingFlow = null;
+        addMessage(msgContainer, '❌ Booking cancelled.');
+        return;
+      }
+      
+      if (step === 'station') {
+        // User selected a station
+        const results = await searchStationsApi(text);
+        if (!results || results.length === 0) {
+          addMessage(msgContainer, `❌ Station "${text}" not found. Please try again or type "cancel".`);
+          return;
+        }
+        
+        data.station = results[0].name;
+        context.bookingFlow.step = 'date';
+        addMessage(msgContainer, `✅ Station: <strong>${data.station}</strong>`);
+        askForDate();
+      }
+      else if (step === 'date') {
+        const lower = text.toLowerCase();
+        let dateVal = null;
+        
+        if (lower === 'today') {
+          dateVal = new Date();
+        } else if (lower === 'tomorrow') {
+          dateVal = new Date();
+          dateVal.setDate(dateVal.getDate() + 1);
+        } else if (lower === 'custom date') {
+          addMessage(msgContainer, 'Enter date as DD/MM/YYYY (e.g., 20/11/2025):');
+          return;
+        } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text)) {
+          const parts = text.split('/').map(Number);
+          dateVal = new Date(parts[2], parts[1] - 1, parts[0]);
+        } else {
+          addMessage(msgContainer, '❌ Invalid date. Use DD/MM/YYYY or select from options.');
+          askForDate();
+          return;
+        }
+        
+        data.date = dateVal;
+        context.bookingFlow.step = 'time';
+        addMessage(msgContainer, `✅ Date: <strong>${dateVal.toLocaleDateString()}</strong>`);
+        askForTime();
+      }
+      else if (step === 'time') {
+        const lower = text.toLowerCase();
+        
+        if (lower === 'custom time') {
+          // Show available slots information
+          const availableCount = context.bookingFlow.availableSlots ? context.bookingFlow.availableSlots.length : 0;
+          addMessage(msgContainer, `ℹ️ There are <strong>${availableCount} available slots</strong> for this station.`);
+          addMessage(msgContainer, 'Enter time as HH:MM (e.g., 14:30 for 2:30 PM):');
+          return;
+        } else if (/^\d{1,2}:\d{2}$/.test(text)) {
+          // Validate that the selected time is in available slots
+          const availableSlots = context.bookingFlow.availableSlots || [];
+          
+          if (availableSlots.length > 0 && !availableSlots.includes(text)) {
+            // Find nearest available slot
+            const requestedHour = parseInt(text.split(':')[0]);
+            const requestedMin = parseInt(text.split(':')[1]);
+            const requestedMinutes = requestedHour * 60 + requestedMin;
+            
+            const nearestSlot = availableSlots.reduce((nearest, slot) => {
+              const slotHour = parseInt(slot.split(':')[0]);
+              const slotMin = parseInt(slot.split(':')[1]);
+              const slotMinutes = slotHour * 60 + slotMin;
+              
+              const currentDiff = Math.abs(slotMinutes - requestedMinutes);
+              const nearestDiff = nearest ? Math.abs(
+                (parseInt(nearest.split(':')[0]) * 60 + parseInt(nearest.split(':')[1])) - requestedMinutes
+              ) : Infinity;
+              
+              return currentDiff < nearestDiff ? slot : nearest;
+            }, null);
+            
+            if (nearestSlot) {
+              addMessage(msgContainer, `⚠️ Time ${text} is not available. The nearest available slot is <strong>${nearestSlot}</strong>.`);
+              addMessage(msgContainer, `Would you like to book at <strong>${nearestSlot}</strong> instead? (Type "yes" or choose a different time)`);
+              context.bookingFlow.suggestedTime = nearestSlot;
+              return;
+            } else {
+              addMessage(msgContainer, '❌ No available slots found. Please try another date.');
+              askForDate();
+              return;
+            }
+          }
+          
+          data.time = text;
+          context.bookingFlow.step = 'duration';
+          addMessage(msgContainer, `✅ Time: <strong>${text}</strong>`);
+          askForDuration();
+        } else if (lower === 'yes' && context.bookingFlow.suggestedTime) {
+          // User accepted the suggested nearest time
+          data.time = context.bookingFlow.suggestedTime;
+          context.bookingFlow.step = 'duration';
+          addMessage(msgContainer, `✅ Time: <strong>${data.time}</strong>`);
+          delete context.bookingFlow.suggestedTime;
+          askForDuration();
+        } else {
+          addMessage(msgContainer, '❌ Invalid time. Use HH:MM format or select from available slots.');
+          askForTime();
+          return;
+        }
+      }
+      else if (step === 'duration') {
+        const lower = text.toLowerCase();
+        
+        if (lower.includes('skip')) {
+          data.duration = null;
+        } else if (lower.includes('30')) {
+          data.duration = 30;
+        } else if (lower.includes('1 hour')) {
+          data.duration = 60;
+        } else if (lower.includes('2 hour')) {
+          data.duration = 120;
+        } else if (lower.includes('3 hour')) {
+          data.duration = 180;
+        } else {
+          addMessage(msgContainer, '❌ Invalid duration. Select from options or type "skip".');
+          askForDuration();
+          return;
+        }
+        
+        // Check if vehicle type is already known
+        if (userPreferences.vehicleType) {
+          data.vehicle = userPreferences.vehicleType;
+          addMessage(msgContainer, `✅ Duration: <strong>${data.duration ? data.duration + ' mins' : 'Not specified'}</strong>`);
+          addMessage(msgContainer, `ℹ️ Using saved vehicle type: <strong>${data.vehicle}</strong>`);
+          
+          // Complete booking flow
+          context.bookingFlow = null;
+          
+          addMessage(msgContainer, '✅ <strong>Booking Details Complete!</strong>');
+          addMessage(msgContainer, `📍 <strong>Station:</strong> ${data.station}<br>📅 <strong>Date:</strong> ${data.date.toLocaleDateString()}<br>⏰ <strong>Time:</strong> ${data.time}${data.duration ? '<br>⏱️ <strong>Duration:</strong> ' + data.duration + ' mins' : ''}${data.vehicle ? '<br>🚗 <strong>Vehicle:</strong> ' + data.vehicle : ''}`);
+          
+          // Fill the booking form
+          return handleBookFill(data);
+        } else {
+          // Ask for vehicle type
+          addMessage(msgContainer, `✅ Duration: <strong>${data.duration ? data.duration + ' mins' : 'Not specified'}</strong>`);
+          context.bookingFlow.step = 'vehicle';
+          askForVehicle();
+        }
+      }
+      else if (step === 'vehicle') {
+        const lower = text.toLowerCase();
+        
+        if (lower.includes('skip')) {
+          data.vehicle = null;
+        } else if (lower.includes('car')) {
+          data.vehicle = 'car';
+          // Save for future bookings
+          userPreferences.vehicleType = 'car';
+          saveUserPreferences();
+        } else if (lower.includes('bike')) {
+          data.vehicle = 'bike';
+          userPreferences.vehicleType = 'bike';
+          saveUserPreferences();
+        } else if (lower.includes('scooter')) {
+          data.vehicle = 'scooter';
+          userPreferences.vehicleType = 'scooter';
+          saveUserPreferences();
+        } else {
+          addMessage(msgContainer, '❌ Invalid vehicle type. Please select from options or type "skip".');
+          askForVehicle();
+          return;
+        }
+        
+        // Complete booking flow
+        context.bookingFlow = null;
+        
+        addMessage(msgContainer, '✅ <strong>Booking Details Complete!</strong>');
+        addMessage(msgContainer, `📍 <strong>Station:</strong> ${data.station}<br>📅 <strong>Date:</strong> ${data.date.toLocaleDateString()}<br>⏰ <strong>Time:</strong> ${data.time}${data.duration ? '<br>⏱️ <strong>Duration:</strong> ' + data.duration + ' mins' : ''}${data.vehicle ? '<br>🚗 <strong>Vehicle:</strong> ' + data.vehicle : ''}`);
+        
+        // Fill the booking form
+        return handleBookFill(data);
+      }
     }
 
     async function handleConnectorQuery(stationName, vehicle){
@@ -1406,7 +2384,6 @@
           const opt = Array.from(durationSelect.options).find(o => o.value === String(duration) || o.text.toLowerCase().includes(String(duration)));
           if (opt) {
             durationSelect.value = opt.value;
-            durationSelect.dispatchEvent(new Event('change'));
             addMessage(msgContainer, `✅ Duration set: ${opt.text}`);
           }
         }
@@ -1416,47 +2393,103 @@
           addMessage(msgContainer, `✅ Vehicle type: ${vehicle}`);
         }
         
-        // Select the time slot after a small delay to ensure slots are generated
+        // Trigger slot generation after station and duration are set
+        // This needs to happen after both station and duration are selected
+        if (duration && durationSelect) {
+          durationSelect.dispatchEvent(new Event('change'));
+        }
+        
+        // Select the time slot after a delay to ensure slots are generated
         if (time) {
           setTimeout(() => {
             const timeSlots = document.querySelectorAll('.time-slot');
-            console.log('Available time slots:', Array.from(timeSlots).map(s => s.dataset.time));
-            console.log('Looking for time:', time);
+            const slotsArray = Array.from(timeSlots);
             
-            const matchingSlot = Array.from(timeSlots).find(slot => 
+            console.log('=== Time Slot Selection Debug ===');
+            console.log('Available time slots:', slotsArray.map(s => s.dataset.time));
+            console.log('Looking for time:', time);
+            console.log('Total slots found:', slotsArray.length);
+            
+            // If no slots generated, notify user
+            if (slotsArray.length === 0) {
+              addMessage(msgContainer, `⚠️ Time slots not loaded yet. Please wait a moment and select the time slot manually.`);
+              return;
+            }
+            
+            const matchingSlotIndex = slotsArray.findIndex(slot => 
               slot.dataset.time === time || slot.textContent.trim() === time
             );
+            
+            const matchingSlot = matchingSlotIndex >= 0 ? slotsArray[matchingSlotIndex] : null;
+            
+            // Helper function to find nearest available slot
+            const findNearestAvailable = (fromIndex) => {
+              // Try next slot first
+              for (let i = fromIndex + 1; i < slotsArray.length; i++) {
+                if (!slotsArray[i].classList.contains('booked')) {
+                  return { slot: slotsArray[i], direction: 'next' };
+                }
+              }
+              // Try previous slot
+              for (let i = fromIndex - 1; i >= 0; i--) {
+                if (!slotsArray[i].classList.contains('booked')) {
+                  return { slot: slotsArray[i], direction: 'previous' };
+                }
+              }
+              return null;
+            };
             
             if (matchingSlot && !matchingSlot.classList.contains('booked')) {
               matchingSlot.click();
               addMessage(msgContainer, `✅ Time slot selected: ${time}`);
               addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
             } else if (matchingSlot && matchingSlot.classList.contains('booked')) {
-              // Find the first available slot as alternative
-              const availableSlot = Array.from(timeSlots).find(slot => 
-                !slot.classList.contains('booked')
-              );
-              if (availableSlot) {
-                availableSlot.click();
-                addMessage(msgContainer, `⚠️ Time slot ${time} was booked. Selected ${availableSlot.dataset.time} instead.`);
+              // Slot found but booked - find nearest available
+              const nearest = findNearestAvailable(matchingSlotIndex);
+              if (nearest) {
+                nearest.slot.click();
+                addMessage(msgContainer, `⚠️ Time slot ${time} was booked. Selected ${nearest.direction} available slot: ${nearest.slot.dataset.time}`);
                 addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
               } else {
-                addMessage(msgContainer, `⚠️ Time slot ${time} is already booked and no slots available. Please select a time manually.`);
+                addMessage(msgContainer, `⚠️ Time slot ${time} is already booked and no nearby slots available. Please select a time manually.`);
               }
             } else {
-              // Slot not found, try to find first available
-              const availableSlot = Array.from(timeSlots).find(slot => 
-                !slot.classList.contains('booked')
-              );
-              if (availableSlot) {
-                availableSlot.click();
-                addMessage(msgContainer, `⚠️ Time slot ${time} not found. Selected ${availableSlot.dataset.time} instead.`);
-                addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+              // Slot not found - try to find any available slot intelligently
+              console.log('Slot not found, searching for alternatives...');
+              
+              // First, try to find any available slot
+              const anyAvailable = slotsArray.find(slot => !slot.classList.contains('booked'));
+              
+              if (anyAvailable) {
+                // Parse requested time to find closest match
+                const targetTime = time.split(':').map(Number);
+                const targetMinutes = targetTime[0] * 60 + (targetTime[1] || 0);
+                
+                // Find available slots sorted by proximity to requested time
+                const availableSlots = slotsArray
+                  .map((slot, idx) => {
+                    if (slot.classList.contains('booked')) return null;
+                    const slotTime = (slot.dataset.time || '').split(':').map(Number);
+                    const slotMinutes = slotTime[0] * 60 + (slotTime[1] || 0);
+                    const diff = Math.abs(slotMinutes - targetMinutes);
+                    return { slot, idx, diff, time: slot.dataset.time };
+                  })
+                  .filter(s => s !== null)
+                  .sort((a, b) => a.diff - b.diff);
+                
+                if (availableSlots.length > 0) {
+                  const bestSlot = availableSlots[0];
+                  bestSlot.slot.click();
+                  addMessage(msgContainer, `⚠️ Time slot ${time} not found. Selected nearest available slot: ${bestSlot.time}`);
+                  addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
+                } else {
+                  addMessage(msgContainer, `⚠️ No available time slots found. Please select a time slot manually.`);
+                }
               } else {
-                addMessage(msgContainer, `⚠️ Time slot ${time} not found. Please select a time slot manually.`);
+                addMessage(msgContainer, `⚠️ Time slot ${time} not found and no available slots. Please select a time slot manually.`);
               }
             }
-          }, 1200);
+          }, 1500); // Increased delay to ensure slots are fully generated
         } else {
           addMessage(msgContainer, `✅ Form filled! Review the details and click the booking button on the page.`);
         }
@@ -1466,20 +2499,153 @@
       }
     }
 
+    // Helper functions for action prompts
+    async function promptForStation(action, msgContainer) {
+      const actionLabels = {
+        'amenities': 'Check Amenities',
+        'pricing': 'View Pricing',
+        'contact': 'Contact Info',
+        'connectors': 'Connector Types'
+      };
+      
+      addMessage(msgContainer, actionLabels[action] || action, 'user');
+      
+      const stations = await fetchStations();
+      if (!stations || stations.length === 0) {
+        addMessage(msgContainer, '❌ No stations available at the moment.');
+        return;
+      }
+      
+      addMessage(msgContainer, `Select a station to view ${actionLabels[action].toLowerCase()}:`);
+      
+      const stationButtons = stations.slice(0, 10).map(s => ({
+        label: `📍 ${s.name}`,
+        value: `${action === 'amenities' ? 'amenities' : action === 'pricing' ? 'price' : action === 'contact' ? 'contact' : 'connectors'} at ${s.name}`
+      }));
+      
+      renderQuickReplies(stationButtons);
+    }
+    
+    async function promptForComparison(msgContainer) {
+      addMessage(msgContainer, 'Compare Stations', 'user');
+      
+      const stations = await fetchStations();
+      if (!stations || stations.length < 2) {
+        addMessage(msgContainer, '❌ Need at least 2 stations to compare.');
+        return;
+      }
+      
+      addMessage(msgContainer, 'Select the first station to compare:');
+      
+      const stationButtons = stations.slice(0, 10).map(s => ({
+        label: `📍 ${s.name}`,
+        value: `compare-first:${s.name}`
+      }));
+      
+      renderQuickReplies(stationButtons);
+    }
+    
+    async function promptForBooking(msgContainer) {
+      addMessage(msgContainer, 'Book a Slot', 'user');
+      
+      const stations = await fetchStations();
+      if (!stations || stations.length === 0) {
+        addMessage(msgContainer, '❌ No stations available for booking.');
+        return;
+      }
+      
+      addMessage(msgContainer, 'Select a station to book:');
+      
+      const stationButtons = stations.slice(0, 10).map(s => ({
+        label: `📍 ${s.name}`,
+        value: `book ${s.name}`
+      }));
+      
+      renderQuickReplies(stationButtons);
+    }
+    
+    async function showFilterOptions(msgContainer) {
+      addMessage(msgContainer, 'Filter Stations', 'user');
+      
+      addMessage(msgContainer, 'Choose a filter option:');
+      
+      renderQuickReplies([
+        { label: '🌐 Public Stations', value: 'show public stations' },
+        { label: '🔒 Private Stations', value: 'show private stations' },
+        { label: '⚡ Fast Chargers', value: 'show fast chargers' },
+        { label: '🔋 Slow Chargers', value: 'show slow chargers' },
+        { label: '🟢 Available Now', value: 'show available stations' },
+        { label: '🅿️ With Parking', value: 'stations with parking' },
+        { label: '☕ With Cafe', value: 'stations with cafe' },
+        { label: '📶 With WiFi', value: 'stations with wifi' }
+      ]);
+    }
+
+    // ===== INITIALIZE SMART FEATURES =====
+    loadUserPreferences();
+    
+    // Proactive time-based suggestions
+    function getTimeBasedGreeting() {
+      const hour = new Date().getHours();
+      let greeting = '👋 Hello';
+      let suggestion = '';
+      
+      if (hour >= 5 && hour < 12) {
+        greeting = '☀️ Good morning';
+        suggestion = 'Morning rush? Find available stations near you!';
+      } else if (hour >= 12 && hour < 17) {
+        greeting = '🌤️ Good afternoon';
+        suggestion = 'Need a quick charge? Check out our fast chargers!';
+      } else if (hour >= 17 && hour < 21) {
+        greeting = '🌆 Good evening';
+        suggestion = 'Evening commute? Find stations with the best amenities!';
+      } else {
+        greeting = '🌙 Good night';
+        suggestion = 'Late night charging? Most stations are 24/7!';
+      }
+      
+      return { greeting, suggestion };
+    }
+    
     // Event listeners
     if (isEmbeddedMode) {
       // Try to load previous chat history
       const historyLoaded = loadChatHistory(msgContainer);
       
       if (!historyLoaded) {
-        // No history - show welcome message
-        addMessage(msgContainer, "👋 Hello! I'm your EV Charging Assistant 2.0. I can help you with:\n\n🔍 <strong>Search & Filter</strong> - Find stations by location, price, amenities\n💰 <strong>Pricing Details</strong> - Compare rates, peak/off-peak pricing\n📊 <strong>Smart Comparisons</strong> - Compare multiple stations\n📅 <strong>Quick Booking</strong> - Book slots instantly\n🎯 <strong>Amenities</strong> - Find stations with parking, wifi, cafe\n\nWhat would you like to do?");
-        renderQuickReplies([
+        // No history - show smart welcome message
+        const { greeting, suggestion } = getTimeBasedGreeting();
+        
+        let welcomeMsg = `${greeting}! I'm your <strong>Smart EV Assistant 3.0</strong> 🤖\n\n`;
+        
+        // Personalized greeting if we know the user
+        if (userPreferences.vehicleType) {
+          welcomeMsg += `I remember you have a <strong>${userPreferences.vehicleType}</strong>! ✅\n\n`;
+        }
+        
+        if (userPreferences.favoriteStations.length > 0) {
+          welcomeMsg += `You have <strong>${userPreferences.favoriteStations.length}</strong> favorite station(s). ⭐\n\n`;
+        }
+        
+        welcomeMsg += `<strong>🧠 Smart Features:</strong>\n`;
+        welcomeMsg += `• Context-aware conversations\n`;
+        welcomeMsg += `• Personalized recommendations\n`;
+        welcomeMsg += `• Natural language understanding\n`;
+        welcomeMsg += `• Follow-up question support\n\n`;
+        welcomeMsg += `<em>${suggestion}</em>`;
+        
+        addMessage(msgContainer, welcomeMsg);
+        
+        // Show personalized or default suggestions
+        const personalizedSuggestions = getPersonalizedSuggestions();
+        const defaultSuggestions = [
           { label: '📍 Find Nearby', value: 'nearby' },
           { label: '📋 List All', value: 'list stations' },
           { label: '💰 Cheapest', value: 'cheapest station' },
-          { label: '🎯 Best For Me', value: 'best station' }
-        ]);
+          { label: '🎯 Recommend', value: 'recommend best station' }
+        ];
+        
+        renderQuickReplies(personalizedSuggestions.length > 0 ? personalizedSuggestions : defaultSuggestions);
       }
       // If history was loaded, just display it without any message
 
@@ -1498,14 +2664,55 @@
         };
       }
 
-      // Add click handlers to example buttons on the page
+      // Add click handlers to action buttons on the page
       const exampleButtons = document.querySelectorAll('.chatbot-examples-list li');
       exampleButtons.forEach(li => {
         li.style.cursor = 'pointer';
-        li.addEventListener('click', () => {
-          const val = li.getAttribute('data-value') || li.textContent.trim();
-          addMessage(msgContainer, val, 'user');
-          handleUserInput(val);
+        li.addEventListener('click', async () => {
+          const action = li.getAttribute('data-action');
+          if (!action) return;
+          
+          // Handle different actions
+          switch(action) {
+            case 'list-stations':
+              addMessage(msgContainer, 'List all stations', 'user');
+              await handleUserInput('list stations');
+              break;
+              
+            case 'nearby':
+              addMessage(msgContainer, 'Find nearby stations', 'user');
+              await handleUserInput('nearby');
+              break;
+              
+            case 'cheapest':
+              addMessage(msgContainer, 'Show cheapest station', 'user');
+              await handleUserInput('cheapest station');
+              break;
+              
+            case 'amenities':
+            case 'pricing':
+            case 'contact':
+            case 'connectors':
+              // These need station selection
+              await promptForStation(action, msgContainer);
+              break;
+              
+            case 'compare':
+              await promptForComparison(msgContainer);
+              break;
+              
+            case 'booking':
+              await promptForBooking(msgContainer);
+              break;
+              
+            case 'filters':
+              await showFilterOptions(msgContainer);
+              break;
+              
+            default:
+              addMessage(msgContainer, li.textContent.trim(), 'user');
+              await handleUserInput(li.textContent.trim());
+          }z
         });
       });
     } else {
@@ -1568,11 +2775,20 @@
       await handleUserInput(v);
     });
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { send.click(); }
-    });
-  }
-
-  // Wait until DOM ready
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { send.click(); }
+      });
+      
+      // Smart session analytics
+      setInterval(() => {
+        const sessionDuration = Date.now() - conversationContext.sessionStartTime;
+        if (sessionDuration > 300000 && conversationContext.messageCount > 5) {
+          // After 5 minutes and 5+ messages, offer help
+          if (conversationContext.messageCount % 10 === 0) {
+            addMessage(msgContainer, '💡 <em>Tip: You can ask follow-up questions like "What about parking?" or "Which one is cheaper?" - I remember our conversation!</em>');
+          }
+        }
+      }, 60000); // Check every minute
+    }  // Wait until DOM ready
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

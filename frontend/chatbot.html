@@ -19,11 +19,16 @@
         <a href="index.html"><i class="fas fa-map"></i> Map View</a>
         <a href="stations.html"><i class="fas fa-list"></i> Station List</a>
         <a href="booking.html"><i class="fas fa-calendar-check"></i> Booking</a>
-        <a href="evcalculator.html"><i class="fas fa-calculator"></i> EV Calculator</a>
         <a href="contact.html"><i class="fas fa-envelope"></i> Contact</a>
         <a href="chatbot.html" class="active"><i class="fas fa-robot"></i> Chatbot</a>
         <a href="about.html"><i class="fas fa-info-circle"></i> About</a>
-        <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i> More</a>
+          <div class="dropdown-menu">
+            <a href="support.html"><i class="fas fa-headset"></i> Support</a>
+            <a href="evcalculator.html"><i class="fas fa-calculator"></i> EV Calculator</a>
+          </div>
+        </div>
       </nav>
     </div>
   </header>
@@ -36,18 +41,18 @@
           <p>Your intelligent companion for finding and booking EV charging stations in Jaipur. I can help with pricing comparisons, amenity searches, station recommendations, and much more!</p>
 
           <div class="chatbot-examples">
-            <h3><i class="fas fa-lightbulb"></i> Quick Examples</h3>
+            <h3><i class="fas fa-lightbulb"></i> Quick Actions</h3>
             <ul class="chatbot-examples-list">
-              <li data-value="list stations"><i class="fas fa-list"></i> list stations</li>
-              <li data-value="nearby"><i class="fas fa-location-arrow"></i> find nearby stations</li>
-              <li data-value="cheapest station"><i class="fas fa-tag"></i> cheapest station</li>
-              <li data-value="show public stations"><i class="fas fa-globe"></i> show public stations</li>
-              <li data-value="stations with parking"><i class="fas fa-parking"></i> stations with parking</li>
-              <li data-value="amenities at World Trade Park Station"><i class="fas fa-concierge-bell"></i> amenities at World Trade Park Station</li>
-              <li data-value="price at Airport Fast Charger"><i class="fas fa-rupee-sign"></i> price at Airport Fast Charger</li>
-              <li data-value="compare World Trade Park Station and Airport Fast Charger"><i class="fas fa-balance-scale"></i> compare stations</li>
-              <li data-value="contact for Manipal University Charger"><i class="fas fa-phone"></i> contact info</li>
-              <li data-value="book World Trade Park Station on today at 14:00"><i class="fas fa-calendar-check"></i> book a slot</li>
+              <li data-action="list-stations"><i class="fas fa-list"></i> List All Stations</li>
+              <li data-action="nearby"><i class="fas fa-location-arrow"></i> Find Nearby</li>
+              <li data-action="cheapest"><i class="fas fa-tag"></i> Cheapest Station</li>
+              <li data-action="amenities"><i class="fas fa-concierge-bell"></i> Check Amenities</li>
+              <li data-action="pricing"><i class="fas fa-rupee-sign"></i> View Pricing</li>
+              <li data-action="contact"><i class="fas fa-phone"></i> Contact Info</li>
+              <li data-action="connectors"><i class="fas fa-plug"></i> Connector Types</li>
+              <li data-action="compare"><i class="fas fa-balance-scale"></i> Compare Stations</li>
+              <li data-action="booking"><i class="fas fa-calendar-check"></i> Book a Slot</li>
+              <li data-action="filters"><i class="fas fa-filter"></i> Filter Stations</li>
             </ul>
           </div>
 
@@ -124,5 +129,6 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/chatbot.js"></script>
+  <script src="js/dropdown.js"></script>
 </body>
 </html>
